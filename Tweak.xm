@@ -70,7 +70,6 @@ static void HGInstallHooks(void) {
         gOriginalIMPs = [NSMutableDictionary dictionary];
         gInstalledHooks = [NSMutableSet set];
 
-        // Ad request/config gates observed in the supplied 1.0.1 binary.
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestShortVideoAd");
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestPauseAd");
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestPatchAd");
@@ -79,7 +78,6 @@ static void HGInstallHooks(void) {
         HGInstallBoolHook(@"SSAdShortVideoSideBarPatchAdConfig", @"enable_side_bar_patch_ad");
         HGInstallBoolHook(@"SSShortVideoCommentAdService", @"enableVideoAlbumAd");
 
-        // Recommendation labels/tags; guarded separately from ad switches.
         HGInstallBoolHook(@"SSShortVideoRcmdReasonViewManager", @"shouldDisplayRcmdReasonView");
         HGInstallBoolHook(@"FQVShortVideoBaseLeftContainerView", @"shouldShowVideoTagInfoInTagList");
 
@@ -89,7 +87,15 @@ static void HGInstallHooks(void) {
 
 %ctor {
     @autoreleasepool {
-        if (![[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.phoenix.video"]) return;
+        NSString *bundleID = [NSBundle mainBundle].bundleIdentifier;
+        NSSet<NSString *> *supportedBundleIDs = [NSSet setWithArray:@[
+            @"com.phoenix.video",
+            @"com.phoenix.video.1",
+            @"com.phoenix.video😡"
+        ]];
+        if (![supportedBundleIDs containsObject:bundleID]) return;
+
+        NSLog(@"[HongGuoPurify] loaded for bundle: %@", bundleID);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
             HGInstallHooks();
