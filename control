@@ -1,0 +1,9 @@
+Package: com.xiaoye.hongguopurify
+Name: 红果短剧净化
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: 红果短剧净化插件（重建版）
+Maintainer: xiaoye-debug
+Author: xiaoye-debug
+Section: Tweaks
+Depends: firmware (>= 15.0), mobilesubstrate
