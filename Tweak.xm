@@ -87,15 +87,21 @@ static void HGInstallHooks(void) {
 
 %ctor {
     @autoreleasepool {
-        NSString *bundleID = [NSBundle mainBundle].bundleIdentifier;
-        NSSet<NSString *> *supportedBundleIDs = [NSSet setWithArray:@[
-            @"com.phoenix.video",
-            @"com.phoenix.video.1",
-            @"com.phoenix.video😡"
-        ]];
-        if (![supportedBundleIDs containsObject:bundleID]) return;
+        NSString *bundleID = [NSBundle mainBundle].bundleIdentifier ?: @"(unknown)";
 
-        NSLog(@"[HongGuoPurify] loaded for bundle: %@", bundleID);
+        // No fixed Bundle ID whitelist: recognize Red Fruit by its app-specific classes
+        // so the tweak does not install hooks indiscriminately in unrelated apps.
+        BOOL looksLikeHongGuo =
+            (NSClassFromString(@"BDADShortVideoCommonAdManager") != Nil) ||
+            (NSClassFromString(@"FQVShortVideoBaseLeftContainerView") != Nil) ||
+            (NSClassFromString(@"SSShortVideoRcmdReasonViewManager") != Nil);
+
+        if (!looksLikeHongGuo) {
+            NSLog(@"[HongGuoPurify] skipped non-target process: %@", bundleID);
+            return;
+        }
+
+        NSLog(@"[HongGuoPurify] recognized Red Fruit process: %@", bundleID);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
             HGInstallHooks();
