@@ -88,22 +88,23 @@ static void HGInstallHooks(void) {
 %ctor {
     @autoreleasepool {
         NSString *bundleID = [NSBundle mainBundle].bundleIdentifier ?: @"(unknown)";
+        NSLog(@"[HongGuoPurify] injected into process: %@", bundleID);
 
-        // No fixed Bundle ID whitelist: recognize Red Fruit by its app-specific classes
-        // so the tweak does not install hooks indiscriminately in unrelated apps.
-        BOOL looksLikeHongGuo =
-            (NSClassFromString(@"BDADShortVideoCommonAdManager") != Nil) ||
-            (NSClassFromString(@"FQVShortVideoBaseLeftContainerView") != Nil) ||
-            (NSClassFromString(@"SSShortVideoRcmdReasonViewManager") != Nil);
-
-        if (!looksLikeHongGuo) {
-            NSLog(@"[HongGuoPurify] skipped non-target process: %@", bundleID);
-            return;
-        }
-
-        NSLog(@"[HongGuoPurify] recognized Red Fruit process: %@", bundleID);
+        // App classes may not be registered when the tweak constructor first runs.
+        // Retry briefly before deciding this is not a Red Fruit process.
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
+            BOOL looksLikeHongGuo =
+                (NSClassFromString(@"BDADShortVideoCommonAdManager") != Nil) ||
+                (NSClassFromString(@"FQVShortVideoBaseLeftContainerView") != Nil) ||
+                (NSClassFromString(@"SSShortVideoRcmdReasonViewManager") != Nil);
+
+            if (!looksLikeHongGuo) {
+                NSLog(@"[HongGuoPurify] target classes not found; no hooks installed for: %@", bundleID);
+                return;
+            }
+
+            NSLog(@"[HongGuoPurify] recognized target classes in: %@", bundleID);
             HGInstallHooks();
         });
     }
