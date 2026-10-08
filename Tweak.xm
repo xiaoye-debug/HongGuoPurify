@@ -17,7 +17,7 @@ static BOOL HGPreference(NSString *key, BOOL fallback) {
 
 static BOOL HGHookedBoolGetter(id self, SEL _cmd) {
     NSString *selectorName = NSStringFromSelector(_cmd);
-    IMP original = [gOriginalIMPs[selectorName] pointerValue];
+    IMP original = (IMP)[gOriginalIMPs[selectorName] pointerValue];
     BOOL isAd = [selectorName containsString:@"Ad"] ||
                 [selectorName containsString:@"ad"] ||
                 [selectorName containsString:@"PatchAd"] ||
@@ -59,7 +59,7 @@ static void HGInstallBoolHook(NSString *className, NSString *selectorName) {
     IMP original = NULL;
     MSHookMessageEx(cls, selector, (IMP)HGHookedBoolGetter, &original);
     if (original) {
-        gOriginalIMPs[key] = [NSValue valueWithPointer:original];
+        gOriginalIMPs[key] = [NSValue valueWithPointer:(const void *)original];
         [gInstalledHooks addObject:[NSString stringWithFormat:@"%@.%@", className, key]];
         NSLog(@"[HongGuoPurify] hooked %@ %@", className, key);
     }
