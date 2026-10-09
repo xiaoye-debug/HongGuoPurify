@@ -20,7 +20,9 @@ jobs:
       - name: Expand reconstructed source
         run: |
           set -euo pipefail
-          base64 -d Tweak.xm.gz.b64 | gzip -dc > Tweak.xm
+          cat Tweak.xm.gz.b64 Tweak.xm.gz.b64.part3 | base64 -d > /tmp/hg-source.gz
+          gzip -t /tmp/hg-source.gz
+          gzip -dc /tmp/hg-source.gz > Tweak.xm
           test -s Tweak.xm
           grep -q 'HGInstallFeatureHooks' Tweak.xm
           git config user.name "github-actions[bot]"
