@@ -685,13 +685,26 @@ static void HGPresentSettings(id host) {
 }
 
 static IMP gOriginalSettingsDidAppear;
+static BOOL HGIsSettingsController(UIViewController *vc) {
+    for (Class cls=vc.class; cls && cls!=UIViewController.class; cls=class_getSuperclass(cls)) {
+        NSString *name=NSStringFromClass(cls);
+        NSString *lower=name.lowercaseString;
+        if ([lower containsString:@"setting"] || [name containsString:@"设置"]) return YES;
+    }
+    NSString *title=vc.title ?: vc.navigationItem.title ?: vc.navigationController.navigationBar.topItem.title ?: @"";
+    if ([title containsString:@"设置"] || [title.lowercaseString containsString:@"setting"]) return YES;
+    return NO;
+}
 static void HGSettingsDidAppear(id self, SEL _cmd, BOOL animated) {
     if (gOriginalSettingsDidAppear) ((void(*)(id,SEL,BOOL))gOriginalSettingsDidAppear)(self,_cmd,animated);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (![self isKindOfClass:UIViewController.class]) return;
         UIViewController *vc=(UIViewController *)self;
-        NSString *name=NSStringFromClass(vc.class);
-        if (![name containsString:@"SSSettingViewController"]) return;
+        if (!HGIsSettingsController(vc) || !vc.navigationController) return;
+        Class targetClass=object_getClass(vc);
+        if (!class_getInstanceMethod(targetClass, @selector(hgOpenHongGuoPurify))) {
+            class_addMethod(targetClass, @selector(hgOpenHongGuoPurify), (IMP)HGOpenSettingsAction, "v@:");
+        }
         UIBarButtonItem *item=[[UIBarButtonItem alloc] initWithTitle:@"红果净化" style:UIBarButtonItemStylePlain target:vc action:@selector(hgOpenHongGuoPurify)];
         objc_setAssociatedObject(vc, @selector(hgOpenHongGuoPurify), item, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         NSMutableArray *items=[vc.navigationItem.rightBarButtonItems mutableCopy] ?: [NSMutableArray array];
@@ -888,15 +901,17 @@ static void HGInstallResolutionHook(void) {
 }
 
 static void HGInstallUIHooks(void) {
-    Class vc = NSClassFromString(@"SSSettingViewController");
-    SEL appear = @selector(viewDidAppear:);
-    if (vc && !gHGSettingsViewHookInstalled && class_getInstanceMethod(vc, appear)) {
-        IMP orig=NULL; MSHookMessageEx(vc, appear, (IMP)HGSettingsDidAppear, &orig); gOriginalSettingsDidAppear=orig; gHGSettingsViewHookInstalled=(orig!=NULL);
+    // Hook UIViewController rather than relying on a single private class name;
+    // the host app changes its settings controller class across versions.
+    Class base=UIViewController.class;
+    SEL appear=@selector(viewDidAppear:);
+    if (!gHGSettingsViewHookInstalled && class_getInstanceMethod(base,appear)) {
+        IMP orig=NULL;
+        MSHookMessageEx(base,appear,(IMP)HGSettingsDidAppear,&orig);
+        gOriginalSettingsDidAppear=orig;
+        gHGSettingsViewHookInstalled=(orig!=NULL);
     }
-    if (vc && !class_getInstanceMethod(vc, @selector(hgOpenHongGuoPurify))) {
-        class_addMethod(vc, @selector(hgOpenHongGuoPurify), (IMP)HGOpenSettingsAction, "v@:");
-    }
-    Class base=UIViewController.class; SEL layout=@selector(viewDidLayoutSubviews);
+    SEL layout=@selector(viewDidLayoutSubviews);
     if (!gHGBaseUIHookInstalled && class_getInstanceMethod(base,layout)) {
         IMP orig=NULL; MSHookMessageEx(base,layout,(IMP)HGViewDidLayoutSubviews,&orig); gOriginalViewDidLayoutSubviews=orig; gHGBaseUIHookInstalled=(orig!=NULL);
     }
