@@ -1,9 +1,4 @@
 {
     Filter = {
-        Bundles = (
-            "com.phoenix.video",
-            "com.phoenix.video.1",
-            "com.phoenix.video😡"
-        );
     };
 }
