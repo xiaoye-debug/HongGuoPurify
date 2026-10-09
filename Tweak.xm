@@ -685,13 +685,16 @@ static void HGPresentSettings(id host) {
 
 static void HGOpenSettingsAction(id self, SEL _cmd);
 static BOOL HGIsSettingsController(UIViewController *vc) {
+    // Match the Red Fruit app's own settings controller used by the original
+    // hongguofn tweak. Do not match arbitrary controllers just because their
+    // class/title contains "Settings"—that can attach this entry to another
+    // tweak's preferences page and make it disappear when that tweak is removed.
+    Class expected = NSClassFromString(@"SSSettingViewController");
+    if (!vc || !expected) return NO;
+
     for (Class cls=vc.class; cls && cls!=UIViewController.class; cls=class_getSuperclass(cls)) {
-        NSString *name=NSStringFromClass(cls);
-        NSString *lower=name.lowercaseString;
-        if ([lower containsString:@"setting"] || [name containsString:@"设置"]) return YES;
+        if (cls == expected) return YES;
     }
-    NSString *title=vc.title ?: vc.navigationItem.title ?: vc.navigationController.navigationBar.topItem.title ?: @"";
-    if ([title containsString:@"设置"] || [title.lowercaseString containsString:@"setting"]) return YES;
     return NO;
 }
 static void HGOpenSettingsAction(id self, SEL _cmd) { HGPresentSettings(self); }
