@@ -391,6 +391,10 @@ static void HGVoidDoubleDouble(id self, SEL _cmd, double current, double duratio
 
 static NSInteger HGIntegerNoArg(id self, SEL _cmd) {
     IMP orig = HGOriginalFor(self, _cmd);
+    NSInteger f=HGFeatureFor(self,_cmd), a=HGActionFor(self,_cmd);
+    if (f == -3 && a == HGActionOverrideStartupIndex && [gHGPrefs[@"enabled"] boolValue] && [gHGPrefs[@"startupTabEnabled"] boolValue]) {
+        NSInteger tab=[gHGPrefs[@"startupTab"] integerValue]; if(tab>0) return tab-1;
+    }
     return orig ? ((NSInteger(*)(id,SEL))orig)(self,_cmd) : 0;
 }
 
@@ -767,6 +771,11 @@ static void HGInstallFeatureHooks(void) {
     // Playback controls. Return type is checked before any hook is installed.
     HGInstallTypedHook(@"FQVShortVideoListPlayConfig", @"defaultFastPlayRate", 43, 0, 7, NO);
     HGInstallTypedHook(@"FQVShortVideoListPlayConfig", @"defaultPlayRate", 43, 0, 7, NO);
+    HGInstallTypedHook(@"FQVShortVideoListPlayConfig", @"defaultFastPlayRate", 43, 0, 7, YES);
+    HGInstallTypedHook(@"FQVShortVideoListPlayConfig", @"defaultPlayRate", 43, 0, 7, YES);
+    HGInstallTypedHook(@"FQVShortVideoListControlConfig", @"enableCleanScreen", 44, HGActionReturnTrue, 1, YES);
+    HGInstallTypedHook(@"SSVipSettingServiceImpl", @"mineIsVipCardShow", 16, HGActionReturnFalse, 1, YES);
+    HGInstallTypedHook(@"SSVipSettingService", @"mineIsVipCardShow", 16, HGActionReturnFalse, 1, YES);
     HGInstallTypedHook(@"FQVShortVideoListVCPlayerComponent", @"longPressPlayRate", 43, 0, 7, NO);
     HGInstallTypedHook(@"FQVShortVideoListVCPlayerComponent", @"playRateWithModel:", 43, 0, 12, NO);
     HGInstallTypedHook(@"FQVShortVideoProgressView", @"updateSliderTime:duration:", 36, 0, 11, NO);
@@ -778,6 +787,10 @@ static void HGInstallFeatureHooks(void) {
 
     // The app's first-screen selector is a q-typed argument; only override it when explicitly enabled.
     HGInstallTypedHook(@"SSVideoSeriesFeedViewModel", @"commitFirstScreenSelectionWithServerIndex:", -3, HGActionOverrideStartupIndex, 13, NO);
+    HGInstallTypedHook(@"SSShortVideoDefaultLandingBottomTabConfigManager", @"currentLandingTabType", -3, HGActionOverrideStartupIndex, 9, NO);
+    HGInstallTypedHook(@"SSShortVideoDefaultLandingBottomTabConfigManager", @"userSelectedLandingTabType", -3, HGActionOverrideStartupIndex, 9, NO);
+    HGInstallTypedHook(@"SSShortVideoDefaultLandingBottomTabConfigManager", @"currentLandingTabType", -3, HGActionOverrideStartupIndex, 9, YES);
+    HGInstallTypedHook(@"SSShortVideoDefaultLandingBottomTabConfigManager", @"userSelectedLandingTabType", -3, HGActionOverrideStartupIndex, 9, YES);
 
     // Startup navigation and top/bottom navigation visibility. Enum meanings vary by app version.
 }
