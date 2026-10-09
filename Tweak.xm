@@ -795,17 +795,29 @@ static void HGInstallFeatureHooks(void) {
     // Startup navigation and top/bottom navigation visibility. Enum meanings vary by app version.
 }
 
-static void HGInstallResolutionHook(void) {
-    Class cls=NSClassFromString(@"FQVPlayerEngineDataResolutionItem"); SEL sel=NSSelectorFromString(@"finalResolutionTypeWithSupportResolutions:videoModel:");
-    Method m=cls?class_getInstanceMethod(cls,sel):NULL; if (!m) { NSLog(@"[HongGuoPurify] resolution selector missing"); return; }
+static void HGInstallResolutionHookOnTarget(Class target, NSString *className, SEL sel) {
+    Method m=target?class_getInstanceMethod(target,sel):NULL;
+    if (!m) return;
     char rt[16]={0}; method_getReturnType(m,rt,sizeof(rt)); unsigned int argc=method_getNumberOfArguments(m);
     char *a2=method_copyArgumentType(m,2); char *a3=method_copyArgumentType(m,3);
-    BOOL ok=argc==4 && rt[0]=='Q' && a2 && a2[0]=='@' && a3 && a3[0]=='@'; if(a2)free(a2); if(a3)free(a3);
-    if(!ok){NSLog(@"[HongGuoPurify] resolution selector ABI skipped");return;}
-    NSString *key=HGKey(cls,sel); IMP original=NULL; MSHookMessageEx(cls,sel,(IMP)HGResolutionFinalType,&original);
-    if(original){gHGOriginalIMPs[key]=[NSValue valueWithPointer:(const void *)original];gHGHookFeatures[key]=@(-2);[gHGInstalled addObject:key];NSLog(@"[HongGuoPurify] hooked resolution selection");}
+    BOOL ok=argc==4 && rt[0]=='Q' && a2 && a2[0]=='@' && a3 && a3[0]=='@';
+    if(a2)free(a2); if(a3)free(a3);
+    if(!ok){NSLog(@"[HongGuoPurify] resolution selector ABI skipped on %@ (%s, args=%u)",className,rt,argc);return;}
+    NSString *key=HGKey(target,sel); if([gHGInstalled containsObject:key]) return;
+    IMP original=NULL; MSHookMessageEx(target,sel,(IMP)HGResolutionFinalType,&original);
+    if(original){gHGOriginalIMPs[key]=[NSValue valueWithPointer:(const void *)original];gHGHookFeatures[key]=@(-2);gHGHookActions[key]=@0;[gHGInstalled addObject:key];NSLog(@"[HongGuoPurify] hooked resolution selection on %@",className);}
+}
+
+static void HGInstallResolutionHook(void) {
+    Class cls=NSClassFromString(@"FQVPlayerEngineDataResolutionItem");
+    if(!cls){NSLog(@"[HongGuoPurify] resolution class missing");return;}
+    SEL sel=NSSelectorFromString(@"finalResolutionTypeWithSupportResolutions:videoModel:");
+    HGInstallResolutionHookOnTarget(cls,@"FQVPlayerEngineDataResolutionItem",sel);
+    HGInstallResolutionHookOnTarget(object_getClass(cls),@"FQVPlayerEngineDataResolutionItem(class)",sel);
     HGInstallTypedHook(@"FQVPlayerEngineDataResolutionItem", @"setEnableNetworkSpeedToChooseResolution:", -2, 0, 14, NO);
+    HGInstallTypedHook(@"FQVPlayerEngineDataResolutionItem", @"setEnableNetworkSpeedToChooseResolution:", -2, 0, 14, YES);
     HGInstallTypedHook(@"FQVPlayerEngineDataResolutionItem", @"setForceResolutionTypeNumber:", -2, HGActionOverrideResolution, 13, NO);
+    HGInstallTypedHook(@"FQVPlayerEngineDataResolutionItem", @"setForceResolutionTypeNumber:", -2, HGActionOverrideResolution, 13, YES);
 }
 
 static void HGInstallUIHooks(void) {
