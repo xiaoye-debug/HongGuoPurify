@@ -16,7 +16,7 @@ HongGuoPurifyPrefs_CFLAGS = -fobjc-arc
 HongGuoPurifyPrefs_FRAMEWORKS = UIKit
 HongGuoPurifyPrefs_LDFLAGS = -undefined dynamic_lookup
 HongGuoPurifyPrefs_INSTALL_PATH = /Library/PreferenceBundles
-HongGuoPurifyPrefs_PLIST = Prefs/Resources/Info.plist
+HongGuoPurifyPrefs_RESOURCE_DIRS = Prefs/Resources
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 include $(THEOS_MAKE_PATH)/bundle.mk
