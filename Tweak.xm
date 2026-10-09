@@ -21,12 +21,25 @@ static NSString *HGHookKey(Class cls, SEL selector) {
     return [NSString stringWithFormat:@"%@::%@", NSStringFromClass(cls), NSStringFromSelector(selector)];
 }
 
-static BOOL HGHookedBoolGetter(id self, SEL _cmd) {
-    Class runtimeClass = object_getClass(self);
-    NSString *key = HGHookKey(runtimeClass, _cmd);
-    IMP original = (IMP)[gOriginalIMPs[key] pointerValue];
+/*
+ * MSHookMessageEx may be installed on a base class while the receiver is a
+ * runtime subclass. Walk the class chain so the original IMP lookup remains
+ * correct for inherited methods as well as direct instances.
+ */
+static IMP HGOriginalIMPForReceiver(id receiver, SEL selector) {
+    Class cls = object_getClass(receiver);
+    while (cls) {
+        NSValue *value = gOriginalIMPs[HGHookKey(cls, selector)];
+        if (value) return (IMP)value.pointerValue;
+        cls = class_getSuperclass(cls);
+    }
+    return NULL;
+}
 
+static BOOL HGHookedBoolGetter(id self, SEL _cmd) {
+    IMP original = HGOriginalIMPForReceiver(self, _cmd);
     NSString *selectorName = NSStringFromSelector(_cmd);
+
     BOOL isAdDecision =
         [selectorName isEqualToString:@"shouldRequestShortVideoAd"] ||
         [selectorName isEqualToString:@"shouldRequestPauseAd"] ||
@@ -44,41 +57,68 @@ static BOOL HGHookedBoolGetter(id self, SEL _cmd) {
     if (isCleanUI && HGPreference(@"cleanUI", YES)) return NO;
 
     if (original) return ((BOOL (*)(id, SEL))original)(self, _cmd);
-    NSLog(@"[HongGuoPurify] original IMP not found for %@; preserving safe default", key);
+    NSLog(@"[HongGuoPurify] original IMP missing for %@; returning NO", selectorName);
     return NO;
+}
+
+static BOOL HGIsSupportedBoolMethod(Method method, NSString *className, NSString *selectorName) {
+    if (!method) return NO;
+
+    unsigned int argCount = method_getNumberOfArguments(method);
+    char returnType[16] = {0};
+    method_getReturnType(method, returnType, sizeof(returnType));
+
+    if (argCount != 2 || (returnType[0] != 'B' && returnType[0] != 'c')) {
+        NSLog(@"[HongGuoPurify] ABI mismatch, skipped: %@ %@ (%s, args=%u)",
+              className, selectorName, returnType, argCount);
+        return NO;
+    }
+    return YES;
+}
+
+static void HGInstallOnClassOrMetaclass(Class target, NSString *className,
+                                         SEL selector, NSString *selectorName) {
+    Method method = class_getInstanceMethod(target, selector);
+    if (!HGIsSupportedBoolMethod(method, className, selectorName)) return;
+
+    NSString *key = HGHookKey(target, selector);
+    if ([gInstalledHooks containsObject:key]) return;
+
+    IMP original = NULL;
+    MSHookMessageEx(target, selector, (IMP)HGHookedBoolGetter, &original);
+    if (original) {
+        gOriginalIMPs[key] = [NSValue valueWithPointer:(const void *)original];
+        [gInstalledHooks addObject:key];
+        NSLog(@"[HongGuoPurify] hooked %@ %@%@", className,
+              class_isMetaClass(target) ? @"+" : @"-", selectorName);
+    } else {
+        NSLog(@"[HongGuoPurify] hook failed: %@ %@%@", className,
+              class_isMetaClass(target) ? @"+" : @"-", selectorName);
+    }
 }
 
 static void HGInstallBoolHook(NSString *className, NSString *selectorName) {
     Class cls = NSClassFromString(className);
     SEL selector = NSSelectorFromString(selectorName);
-
-    if (!cls || !class_getInstanceMethod(cls, selector)) {
-        NSLog(@"[HongGuoPurify] class/method missing: %@ %@", className, selectorName);
+    if (!cls) {
+        NSLog(@"[HongGuoPurify] class missing: %@", className);
         return;
     }
 
-    Method method = class_getInstanceMethod(cls, selector);
-    unsigned int argCount = method_getNumberOfArguments(method);
-    char returnType[8] = {0};
-    method_getReturnType(method, returnType, sizeof(returnType));
-    if (argCount != 2 || (returnType[0] != 'B' && returnType[0] != 'c')) {
-        NSLog(@"[HongGuoPurify] ABI mismatch, skipped: %@ %@ (%s, args=%u)",
-              className, selectorName, returnType, argCount);
-        return;
+    BOOL found = NO;
+    if (class_getInstanceMethod(cls, selector)) {
+        HGInstallOnClassOrMetaclass(cls, className, selector, selectorName);
+        found = YES;
     }
 
-    NSString *key = HGHookKey(cls, selector);
-    if ([gInstalledHooks containsObject:key]) return;
-
-    IMP original = NULL;
-    MSHookMessageEx(cls, selector, (IMP)HGHookedBoolGetter, &original);
-    if (original) {
-        gOriginalIMPs[key] = [NSValue valueWithPointer:(const void *)original];
-        [gInstalledHooks addObject:key];
-        NSLog(@"[HongGuoPurify] hooked %@ %@", className, selectorName);
-    } else {
-        NSLog(@"[HongGuoPurify] hook failed: %@ %@", className, selectorName);
+    Class meta = object_getClass(cls);
+    if (meta && class_getInstanceMethod(meta, selector)) {
+        HGInstallOnClassOrMetaclass(meta, className, selector, selectorName);
+        found = YES;
     }
+
+    if (!found) NSLog(@"[HongGuoPurify] method missing (instance/class): %@ %@",
+                      className, selectorName);
 }
 
 static void HGInstallHooks(void) {
@@ -86,8 +126,8 @@ static void HGInstallHooks(void) {
         gOriginalIMPs = [NSMutableDictionary dictionary];
         gInstalledHooks = [NSMutableSet set];
 
-        // These candidates are confirmed by strings in the supplied original binary,
-        // but still require runtime verification against the installed Red Fruit version.
+        // Candidate methods are present in the supplied original binary's
+        // metadata/strings. Their runtime presence is checked before installation.
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestShortVideoAd");
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestPauseAd");
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestPatchAd");
@@ -107,7 +147,7 @@ static void HGInstallHooks(void) {
     @autoreleasepool {
         NSString *bundleID = [NSBundle mainBundle].bundleIdentifier ?: @"(unknown)";
         if (![bundleID isEqualToString:@"com.phoenix.video"]) {
-            NSLog(@"[HongGuoPurify] not Red Fruit (%@), skip injection logic", bundleID);
+            NSLog(@"[HongGuoPurify] not Red Fruit (%@), skip", bundleID);
             return;
         }
 
