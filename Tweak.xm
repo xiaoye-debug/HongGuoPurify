@@ -513,13 +513,13 @@ static BOOL HGViewMatchesFeature(UIView *v, NSInteger f) {
         case 6: return HGContainsAny(context,@[@"通知权限",@"开启通知",@"开启推送",@"notificationpermission"]);
         case 7: return HGContainsAny(context,@[@"小组件",@"添加到桌面",@"widgetguide"]);
         case 4: return HGContainsAny(context,@[@"pendant",@"福利挂件",@"金币挂件",@"rewardbubble"]);
-        case 5: return HGContainsAny(context,@[@"圈子帖子",@"圈子卡片",@"circlepost",@"circlecard",@"chapterendcirclepost"]);
+        case 5: return HGContainsAny(context,@[@"圈子帖子",@"圈子卡片",@"circlepost",@"circlecard",@"chapterendcirclepost"]) || (HGContainsAny(context,@[@"chapterend",@"章末"]) && HGContainsAny(context,@[@"circle",@"圈子"]) && !HGContainsAny(context,@[@"button",@"按钮",@"entry",@"入口"]));
         case 10: return HGContainsAny(context,@[@"本章讨论",@"discussionentry",@"chapterdiscussion",@"discussionbutton"]);
         case 11: return HGContainsAny(context,@[@"圈子按钮",@"圈子入口",@"circlebutton",@"circleentry"]) ||
                         ([s containsString:@"圈子"] && HGContainsAny(s,@[@"button",@"entry"]) && HGContainsAny(context,@[@"chapterend",@"章末"]));
         case 9: return HGContainsAny(context,@[@"作者的话",@"作者寄语",@"authornote"]);
         case 12: return HGContainsAny(context,@[@"送礼物",@"打赏",@"gift"]);
-        case 13: return HGContainsAny(context,@[@"章末快捷",@"chapterendquick",@"chapterendaction",@"quickbutton",@"更新历史快捷"]);
+        case 13: return HGContainsAny(context,@[@"章末快捷",@"chapterendquick",@"chapterendaction",@"quickbutton",@"更新历史快捷"]) || (HGContainsAny(context,@[@"chapterend",@"章末"]) && HGContainsAny(context,@[@"button",@"按钮"]) && !HGContainsAny(context,@[@"催更",@"更新历史"]));
         case 14: return [context containsString:@"福利"] && HGContainsAny(context,@[@"tab",@"导航",@"bottom"]);
         case 16: return HGContainsAny(context,@[@"福利卡",@"welfarecard",@"金币福利卡",@"提现卡片"]);
         case 18: return HGContainsAny(context,@[@"推荐卡",@"recommendcard",@"关注推荐"]);
