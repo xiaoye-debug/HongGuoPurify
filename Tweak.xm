@@ -19,11 +19,11 @@ static NSArray<NSString *> *HGFeatureTitles(void) {
         a = @[
             @"阅读去广告", @"听书去广告", @"推广入口净化", @"关闭评价邀请", @"隐藏短剧金币挂件", @"隐藏章末圈子",
             @"减少通知权限提醒", @"减少小组件提醒", @"会员状态显示优化（不改变真实权益）", @"隐藏作者的话", @"隐藏本章讨论入口", @"隐藏章末圈子按钮",
-            @"隐藏章末送礼物", @"隐藏最新章节三个按钮", @"隐藏底部福利导航", @"允许快速关闭激励广告", @"隐藏我的页福利卡片", @"标题固定为章节名",
+            @"隐藏章末送礼物", @"隐藏最新章节三个按钮", @"隐藏底部福利导航", @"允许快速跳过激励广告", @"隐藏我的页福利卡片", @"返回标题固定为章节名",
             @"隐藏我的页推荐卡片", @"隐藏我的页发帖按钮", @"隐藏底部短剧导航", @"关闭短剧进入自动播放", @"隐藏书城发帖按钮", @"隐藏书架漫剧推荐",
             @"隐藏书架今日听读时长", @"隐藏书架导入本地书入口", @"短剧去广告", @"隐藏发送弹幕按钮", @"隐藏作者声明", @"隐藏系列剧集入口",
             @"隐藏爆剧标志", @"隐藏热评", @"隐藏剧标签", @"隐藏顶部导航", @"隐藏 AI 短剧备案号", @"隐藏我的页顶部快捷入口整组",
-            @"进度条显示时长", @"允许显示原生下载入口", @"预留功能 38", @"预留功能 39", @"隐藏视频榜单排名", @"隐藏红点提醒",
+            @"进度条显示时长", @"允许强制本地下载", @"预留功能 38", @"预留功能 39", @"隐藏视频榜单排名", @"隐藏红点提醒",
             @"隐藏侧边栏游戏中心", @"自动使用默认倍速播放", @"播放时自动清屏", @"暂停时退出清屏模式"
         ];
     }); return a;
@@ -643,6 +643,7 @@ static void HGInstallFeatureHooks(void) {
     HGInstallTypedHook(@"BDADShortVideoCommonAdManager", @"shouldRequestShortVideoAd", 26, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"BDADShortVideoCommonAdManager", @"shouldRequestPauseAd", 26, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"BDADShortVideoCommonAdManager", @"shouldRequestPatchAd", 26, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"BDADShortVideoCommonAdManager", @"shouldShowPauseAdWithCloseStrategy", 26, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"BDADShortVideoCommonAdManager", @"pauseAdRequestEnable", 26, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"BDADShortVideoCommonAdManager", @"shouldReqWithSeriesId:episodeIndex:", 26, HGActionReturnFalse, 3, NO);
     HGInstallTypedHook(@"SSAdShortVideoHomePageFeedAdConfig", @"enable_recommend_flow_ad", 26, HGActionReturnFalse, 1, NO);
