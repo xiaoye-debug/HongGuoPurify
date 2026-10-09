@@ -14,7 +14,7 @@ BUNDLE_NAME = HongGuoPurifyPrefs
 HongGuoPurifyPrefs_FILES = Prefs/HGRootListController.m
 HongGuoPurifyPrefs_CFLAGS = -fobjc-arc
 HongGuoPurifyPrefs_FRAMEWORKS = UIKit
-HongGuoPurifyPrefs_PRIVATE_FRAMEWORKS = Preferences
+HongGuoPurifyPrefs_LDFLAGS = -undefined dynamic_lookup
 HongGuoPurifyPrefs_INSTALL_PATH = /Library/PreferenceBundles
 HongGuoPurifyPrefs_PLIST = Prefs/Resources/Info.plist
 
