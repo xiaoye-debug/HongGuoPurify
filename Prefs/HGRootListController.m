@@ -70,7 +70,7 @@ static NSString * const HGChangedNotification = @"com.xiaoye.hongguopurify/prefe
                                                                set:@selector(setPreferenceValue:specifier:)
                                                                get:@selector(readPreferenceValue:)
                                                             detail:nil
-                                                              cell:PSToggleSwitchCell
+                                                              cell:PSSwitchCell
                                                               edit:nil];
     [specifier setProperty:key forKey:@"key"];
     [specifier setProperty:defaultValue forKey:@"default"];
