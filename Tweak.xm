@@ -489,8 +489,16 @@ static NSString *HGTextForView(UIView *view) {
 
 static NSString *HGContextTextForView(UIView *view) {
     NSMutableArray *parts=[NSMutableArray array];
-    UIView *cursor=view;
-    for(NSUInteger depth=0; cursor && depth<7; depth++,cursor=cursor.superview) [parts addObject:HGTextForView(cursor)];
+    UIResponder *cursor=view;
+    for(NSUInteger depth=0; cursor && depth<12; depth++,cursor=cursor.nextResponder) {
+        if([cursor isKindOfClass:UIView.class]) [parts addObject:HGTextForView((UIView *)cursor)];
+        else if([cursor isKindOfClass:UIViewController.class]) {
+            UIViewController *vc=(UIViewController *)cursor;
+            [parts addObject:NSStringFromClass(vc.class) ?: @""];
+            if(vc.title.length) [parts addObject:vc.title];
+            if(vc.navigationItem.title.length) [parts addObject:vc.navigationItem.title];
+        }
+    }
     return [[parts componentsJoinedByString:@" "] lowercaseString];
 }
 
