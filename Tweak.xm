@@ -655,6 +655,16 @@ static void HGInstallFeatureHooks(void) {
     HGInstallTypedHook(@"SSShortVideoAiUsageView", @"configureSeriesAIEntranceViewWithModel:", 34, HGActionSkipVoid, 5, NO);
 
     // Reward and coin pendant controls (feature 4), plus use the native ad close path (feature 15).
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"canShowPendantInVC:", 4, HGActionReturnFalse, 2, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"tryShowPendant:", 4, HGActionSkipVoid, 5, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"addHoverView", 4, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"refreshHoverView", 4, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"triggerKmpPendantIfNeededWithAttachView:", 4, HGActionSkipVoid, 5, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"tryShowAssetAwarenessBubble", 4, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"tryShowLimitTimeDoubleBubble", 4, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"tryShowTodayMaxRewardBubble", 4, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"tryShowRewardNoticeBubble", 4, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSWelfareShortVideoPendantManager", @"tryShowDaily1MinTipsBubble", 4, HGActionSkipVoid, 4, NO);
     HGInstallTypedHook(@"SSWelfareListenPendantManager", @"canShowPendantInVC:", 4, HGActionReturnFalse, 2, NO);
     HGInstallTypedHook(@"SSWelfareListenPendantManager", @"tryShowPendant:", 4, HGActionSkipVoid, 5, NO);
     HGInstallTypedHook(@"SSWelfareListenPendantManager", @"addHoverView", 4, HGActionSkipVoid, 4, NO);
