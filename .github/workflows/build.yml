@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -14,36 +14,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-
-      - name: Expand reconstructed source
-        run: |
-          set -euo pipefail
-          cat Tweak.xm.gz.b64 Tweak.xm.gz.b64.part3 | base64 -d > /tmp/hg-source.gz
-          gzip -t /tmp/hg-source.gz
-          gzip -dc /tmp/hg-source.gz > Tweak.xm
-          python3 - <<'PY'
-          import re
-          p = "Tweak.xm"
-          s = open(p, encoding="utf-8").read()
-          pattern = r"IMP orig=HGOriginalFor\(self,_cmd\);\s*NSInteger f=HGFeatureFor\(self,_cmd\);\s*NSInteger a=HGActionFor\(self,_cmd\);\s*if\(f==41 && HGEnabled\(41\)\) return NO;"
-          replacement = """IMP orig=HGOriginalFor(self,_cmd);
-              if(HGEnabled(41)) return NO;"""
-          s, n = re.subn(pattern, replacement, s, count=1)
-          if n != 1:
-              raise SystemExit("could not apply red-dot hook compile fix")
-          open(p, "w", encoding="utf-8").write(s)
-          PY
-          test -s Tweak.xm
-          grep -q 'HGInstallFeatureHooks' Tweak.xm
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Tweak.xm
-          if ! git diff --cached --quiet; then
-            git commit -m "Expand reconstructed HongGuoPurify source"
-            git push
-          fi
 
       - name: Install build dependencies
         run: |
