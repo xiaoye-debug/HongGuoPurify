@@ -141,6 +141,9 @@ static NSString *HGDescriptionForModel(id item) {
     NSString *desc=[item description]; if(desc.length)[parts addObject:desc];
     for (NSString *prop in @[@"titleString",@"title",@"name",@"schema",@"jumpUrl",@"cellName",@"type",@"redDotId",@"cellType",@"identifier",@"itemId"]) {
         SEL getter=NSSelectorFromString(prop); if(![item respondsToSelector:getter]) continue;
+        Method method=class_getInstanceMethod(object_getClass(item),getter); if(!method) continue;
+        char returnType[16]={0}; method_getReturnType(method,returnType,sizeof(returnType));
+        if(returnType[0]!='@' && returnType[0]!='#') continue;
         @try { id value=((id(*)(id,SEL))objc_msgSend)(item,getter); if(value && value!=NSNull.null)[parts addObject:[value description]]; } @catch (__unused NSException *e) {}
     }
     return [[parts componentsJoinedByString:@" "] lowercaseString];
