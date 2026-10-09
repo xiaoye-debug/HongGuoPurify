@@ -51,6 +51,9 @@ static NSMutableDictionary<NSString *, NSNumber *> *gHGHookFeatures;
 static NSMutableDictionary<NSString *, NSNumber *> *gHGHookActions;
 static NSMutableSet<NSString *> *gHGInstalled;
 static BOOL gHGSettingsButtonAdded;
+static BOOL gHGBaseUIHookInstalled;
+static BOOL gHGSettingsViewHookInstalled;
+static NSUInteger gHGHookPassCount;
 
 static NSDictionary *HGDefaultPreferences(void) {
     return @{@"enabled": @YES, @"blockAds": @YES, @"cleanUI": @NO,
@@ -823,15 +826,27 @@ static void HGInstallResolutionHook(void) {
 static void HGInstallUIHooks(void) {
     Class vc = NSClassFromString(@"SSSettingViewController");
     SEL appear = @selector(viewDidAppear:);
-    if (vc && class_getInstanceMethod(vc, appear)) {
-        IMP orig=NULL; MSHookMessageEx(vc, appear, (IMP)HGSettingsDidAppear, &orig); gOriginalSettingsDidAppear=orig;
+    if (vc && !gHGSettingsViewHookInstalled && class_getInstanceMethod(vc, appear)) {
+        IMP orig=NULL; MSHookMessageEx(vc, appear, (IMP)HGSettingsDidAppear, &orig); gOriginalSettingsDidAppear=orig; gHGSettingsViewHookInstalled=(orig!=NULL);
     }
-    // Install an action selector on the target settings controller at runtime.
     if (vc && !class_getInstanceMethod(vc, @selector(hgOpenHongGuoPurify))) {
         class_addMethod(vc, @selector(hgOpenHongGuoPurify), (IMP)HGOpenSettingsAction, "v@:");
     }
     Class base=UIViewController.class; SEL layout=@selector(viewDidLayoutSubviews);
-    if (class_getInstanceMethod(base,layout)) { IMP orig=NULL; MSHookMessageEx(base,layout,(IMP)HGViewDidLayoutSubviews,&orig); gOriginalViewDidLayoutSubviews=orig; }
+    if (!gHGBaseUIHookInstalled && class_getInstanceMethod(base,layout)) {
+        IMP orig=NULL; MSHookMessageEx(base,layout,(IMP)HGViewDidLayoutSubviews,&orig); gOriginalViewDidLayoutSubviews=orig; gHGBaseUIHookInstalled=(orig!=NULL);
+    }
+}
+
+static void HGInstallAllHooksPass(void) {
+    gHGHookPassCount++;
+    HGInstallFeatureHooks();
+    HGInstallResolutionHook();
+    HGInstallUIHooks();
+    NSLog(@"[HongGuoPurify] hook pass %lu complete (%lu installed)",(unsigned long)gHGHookPassCount,(unsigned long)gHGInstalled.count);
+    if (gHGHookPassCount < 5) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ HGInstallAllHooksPass(); });
+    }
 }
 
 static void HGPreferencesDidChange(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
@@ -845,10 +860,7 @@ static void HGPreferencesDidChange(CFNotificationCenterRef center, void *observe
         HGLoadPreferences();
         gHGOriginalIMPs=[NSMutableDictionary dictionary]; gHGHookFeatures=[NSMutableDictionary dictionary]; gHGHookActions=[NSMutableDictionary dictionary]; gHGInstalled=[NSMutableSet set];
         NSLog(@"[HongGuoPurify] loaded for %@", bundleID);
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(2.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
-            HGInstallFeatureHooks(); HGInstallResolutionHook(); HGInstallUIHooks();
-            NSLog(@"[HongGuoPurify] feature hook pass finished (%lu installed)",(unsigned long)gHGInstalled.count);
-        });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(2.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ HGInstallAllHooksPass(); });
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), &gHGSettingsButtonAdded, HGPreferencesDidChange, (__bridge CFStringRef)kHGPreferencesChanged, NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
     }
 }
