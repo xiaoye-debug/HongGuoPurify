@@ -52,7 +52,9 @@ static BOOL HGHookedBoolGetter(id self, SEL _cmd) {
 
     BOOL isCleanUI =
         [selectorName isEqualToString:@"shouldDisplayRcmdReasonView"] ||
-        [selectorName isEqualToString:@"shouldShowVideoTagInfoInTagList"];
+        [selectorName isEqualToString:@"shouldShowVideoTagInfoInTagList"] ||
+        [selectorName isEqualToString:@"shouldAddAiUsageView"] ||
+        [selectorName isEqualToString:@"shouldAddParallelWorldEntryView"];
 
     if (isAdDecision && HGPreference(@"blockAds", YES)) return NO;
     if (isCleanUI && HGPreference(@"cleanUI", YES)) return NO;
