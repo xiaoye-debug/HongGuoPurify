@@ -31,7 +31,16 @@ jobs:
 
       - name: Verify preference bundle and package contents
         run: |
-          dpkg-deb -c packages/*.deb | grep -E 'PreferenceBundles/HongGuoPurifyPrefs.bundle|PreferenceLoader/Preferences/HongGuoPurifyPrefs.plist|HongGuoPurify.dylib'
+          set -e
+          dpkg-deb -c packages/*.deb | grep 'var/jb/Library/MobileSubstrate/DynamicLibraries/HongGuoPurify.dylib'
+          dpkg-deb -c packages/*.deb | grep 'var/jb/Library/PreferenceLoader/Preferences/HongGuoPurifyPrefs.plist'
+          mkdir -p extracted
+          dpkg-deb -x packages/*.deb extracted
+          PREFS_BUNDLE="extracted/var/jb/Library/PreferenceBundles/HongGuoPurifyPrefs.bundle"
+          test -f "$PREFS_BUNDLE/Info.plist"
+          test -f "$PREFS_BUNDLE/HongGuoPurifyPrefs"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PREFS_BUNDLE/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :NSPrincipalClass' "$PREFS_BUNDLE/Info.plist"
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
