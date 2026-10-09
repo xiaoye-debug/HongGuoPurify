@@ -484,40 +484,63 @@ static NSString *HGTextForView(UIView *view) {
     return [[parts componentsJoinedByString:@" "] lowercaseString];
 }
 
+static NSString *HGContextTextForView(UIView *view) {
+    NSMutableArray *parts=[NSMutableArray array];
+    UIView *cursor=view;
+    for(NSUInteger depth=0; cursor && depth<7; depth++,cursor=cursor.superview) [parts addObject:HGTextForView(cursor)];
+    return [[parts componentsJoinedByString:@" "] lowercaseString];
+}
+
+static BOOL HGContainsAny(NSString *text, NSArray<NSString *> *terms) {
+    for(NSString *term in terms) if([text containsString:term]) return YES;
+    return NO;
+}
+
 static BOOL HGViewMatchesFeature(UIView *v, NSInteger f) {
-    NSString *s = HGTextForView(v);
+    NSString *s=HGTextForView(v);
+    NSString *context=HGContextTextForView(v);
+    BOOL adLike=HGContainsAny(context,@[@"adview",@"advert",@"adcontainer",@"ssad",@"bdad",@"广告",@"推广"]);
+    BOOL readerContext=HGContainsAny(context,@[@"reader",@"readpage",@"readingpage",@"bookread",@"chapterreader",@"阅读页",@"阅读广告",@"章节阅读"]);
+    BOOL audioContext=HGContainsAny(context,@[@"listen",@"audio",@"voiceplayer",@"audioplayer",@"readaloud",@"听书",@"听读",@"音频"]);
+    BOOL dramaContext=HGContainsAny(context,@[@"shortvideo",@"shortvideofeed",@"shortdrama",@"ssadshortvideo",@"bdadshortvideo",@"fqvshortvideo",@"短剧"]);
+    BOOL publish=HGContainsAny(context,@[@"发帖",@"publish",@"compose",@"postbutton"]);
     switch (f) {
-        case 0: case 1: case 26:
-            return ([s containsString:@"adview"] || [s containsString:@"advert"] || [s containsString:@"adcontainer"] || [s containsString:@"广告"] || [s containsString:@"推广"]);
-        case 2: return ([s containsString:@"小游戏"] || [s containsString:@"游戏中心"] || [s containsString:@"商城"] || [s containsString:@"直播入口"]);
-        case 3: return ([s containsString:@"评分"] || [s containsString:@"评价"] || [s containsString:@"rateus"] || [s containsString:@"reviewinvite"]);
-        case 6: return ([s containsString:@"通知权限"] || [s containsString:@"开启通知"] || [s containsString:@"开启推送"] || [s containsString:@"notificationpermission"]);
-        case 7: return ([s containsString:@"小组件"] || [s containsString:@"添加到桌面"] || [s containsString:@"widgetguide"]);
-        case 4: return ([s containsString:@"pendant"] || [s containsString:@"福利挂件"] || [s containsString:@"金币挂件"] || [s containsString:@"rewardbubble"]);
-        case 5: case 10: case 11: return ([s containsString:@"本章讨论"] || [s containsString:@"圈子"] || [s containsString:@"discussion"]);
-        case 9: return ([s containsString:@"作者的话"] || [s containsString:@"作者寄语"] || [s containsString:@"authornote"]);
-        case 12: return ([s containsString:@"送礼物"] || [s containsString:@"打赏"] || [s containsString:@"gift"]);
-        case 13: return ([s containsString:@"催更"] || [s containsString:@"更新历史"] || [s containsString:@"章末快捷"]);
-        case 14: return ([s containsString:@"福利"] && ([s containsString:@"tab"] || [s containsString:@"导航"] || [s containsString:@"bottom"]));
-        case 16: return ([s containsString:@"福利卡"] || [s containsString:@"金币"] || [s containsString:@"提现"]);
-        case 18: return ([s containsString:@"推荐卡"] || [s containsString:@"recommendcard"] || [s containsString:@"关注推荐"]);
-        case 19: case 22: return ([s containsString:@"发帖"] || [s containsString:@"publish"] || [s containsString:@"compose"]);
-        case 20: return ([s containsString:@"短剧"] && ([s containsString:@"tab"] || [s containsString:@"导航"] || [s containsString:@"bottom"]));
-        case 23: return ([s containsString:@"漫剧"] || [s containsString:@"改编剧"] || [s containsString:@"adapted"]);
-        case 24: return ([s containsString:@"听读时长"] || [s containsString:@"今日已看"] || [s containsString:@"readingtime"]);
-        case 25: return ([s containsString:@"导入本地书"] || [s containsString:@"importbook"]);
-        case 27: return ([s containsString:@"弹幕"] || [s containsString:@"barrage"]);
-        case 28: return ([s containsString:@"作者声明"] || [s containsString:@"声明"]);
-        case 29: return ([s containsString:@"系列剧集"] || [s containsString:@"seriesentry"]);
-        case 30: return ([s containsString:@"爆剧"] || [s containsString:@"hotdrama"]);
-        case 31: return ([s containsString:@"热评"] || [s containsString:@"hotcomment"]);
-        case 32: return ([s containsString:@"tagview"] || [s containsString:@"剧标签"] || [s containsString:@"标签列表"]);
-        case 33: return ([s containsString:@"topnavigation"] || [s containsString:@"顶部导航"] || [s containsString:@"navigationheader"] || [s containsString:@"topbar"] || [s containsString:@"navbar"] || [s containsString:@"navigationbar"]);
-        case 34: return ([s containsString:@"备案号"] || [s containsString:@"aiusage"] || [s containsString:@"ai备案"]);
-        case 35: return ([s containsString:@"快捷入口"] || [s containsString:@"shortcutgroup"] || [s containsString:@"minequick"]);
-        case 40: return ([s containsString:@"榜单排名"] || [s containsString:@"ranknumber"] || [s containsString:@"ranking"]);
-        case 41: return ([s containsString:@"reddot"] || [s containsString:@"redpoint"] || [s containsString:@"红点"] || [s containsString:@"红点提醒"]);
-        case 42: return ([s containsString:@"游戏中心"] || [s containsString:@"gamecenter"] || [s containsString:@"小游戏"]);
+        case 0: return adLike && readerContext;
+        case 1: return adLike && audioContext;
+        case 26: return adLike && dramaContext;
+        case 2: return HGContainsAny(context,@[@"小游戏",@"游戏中心",@"商城",@"直播入口"]);
+        case 3: return HGContainsAny(context,@[@"评分",@"评价",@"rateus",@"reviewinvite"]);
+        case 6: return HGContainsAny(context,@[@"通知权限",@"开启通知",@"开启推送",@"notificationpermission"]);
+        case 7: return HGContainsAny(context,@[@"小组件",@"添加到桌面",@"widgetguide"]);
+        case 4: return HGContainsAny(context,@[@"pendant",@"福利挂件",@"金币挂件",@"rewardbubble"]);
+        case 5: return HGContainsAny(context,@[@"圈子帖子",@"圈子卡片",@"circlepost",@"circlecard",@"chapterendcirclepost"]);
+        case 10: return HGContainsAny(context,@[@"本章讨论",@"discussionentry",@"chapterdiscussion",@"discussionbutton"]);
+        case 11: return HGContainsAny(context,@[@"圈子按钮",@"圈子入口",@"circlebutton",@"circleentry"]) ||
+                        ([s containsString:@"圈子"] && HGContainsAny(s,@[@"button",@"entry"]) && HGContainsAny(context,@[@"chapterend",@"章末"]));
+        case 9: return HGContainsAny(context,@[@"作者的话",@"作者寄语",@"authornote"]);
+        case 12: return HGContainsAny(context,@[@"送礼物",@"打赏",@"gift"]);
+        case 13: return HGContainsAny(context,@[@"章末快捷",@"chapterendquick",@"chapterendaction",@"quickbutton",@"更新历史快捷"]);
+        case 14: return [context containsString:@"福利"] && HGContainsAny(context,@[@"tab",@"导航",@"bottom"]);
+        case 16: return HGContainsAny(context,@[@"福利卡",@"welfarecard",@"金币福利卡",@"提现卡片"]);
+        case 18: return HGContainsAny(context,@[@"推荐卡",@"recommendcard",@"关注推荐"]);
+        case 19: return publish && HGContainsAny(context,@[@"我的页",@"minepage",@"myuser",@"myprofile",@"userprofile"]);
+        case 22: return publish && HGContainsAny(context,@[@"书城",@"bookstore",@"bookcity"]);
+        case 20: return [context containsString:@"短剧"] && HGContainsAny(context,@[@"tab",@"导航",@"bottom"]);
+        case 23: return HGContainsAny(context,@[@"漫剧",@"改编剧",@"adapted"]);
+        case 24: return HGContainsAny(context,@[@"听读时长",@"今日已看",@"readingtime"]);
+        case 25: return HGContainsAny(context,@[@"导入本地书",@"importbook"]);
+        case 27: return HGContainsAny(context,@[@"弹幕",@"barrage"]);
+        case 28: return HGContainsAny(context,@[@"作者声明",@"声明"]);
+        case 29: return HGContainsAny(context,@[@"系列剧集",@"seriesentry"]);
+        case 30: return HGContainsAny(context,@[@"爆剧",@"hotdrama"]);
+        case 31: return HGContainsAny(context,@[@"热评",@"hotcomment"]);
+        case 32: return HGContainsAny(context,@[@"tagview",@"剧标签",@"标签列表"]);
+        case 33: return HGContainsAny(context,@[@"topnavigation",@"顶部导航",@"navigationheader",@"topbar",@"navbar",@"navigationbar"]);
+        case 34: return HGContainsAny(context,@[@"备案号",@"aiusage",@"ai备案"]);
+        case 35: return HGContainsAny(context,@[@"快捷入口",@"shortcutgroup",@"minequick"]);
+        case 40: return HGContainsAny(context,@[@"榜单排名",@"ranknumber",@"ranking"]);
+        case 41: return HGContainsAny(context,@[@"reddot",@"redpoint",@"红点",@"红点提醒"]);
+        case 42: return HGContainsAny(context,@[@"游戏中心",@"gamecenter",@"小游戏"]);
         default: return NO;
     }
 }
