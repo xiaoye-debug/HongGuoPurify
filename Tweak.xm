@@ -122,7 +122,7 @@ static NSInteger HGActionFor(id self, SEL sel) {
     return 0;
 }
 
-enum { HGActionReturnFalse = 1, HGActionReturnTrue = 2, HGActionSkipVoid = 3, HGActionShowCloseButton = 4, HGActionExitCleanMode = 5, HGActionEnterCleanMode = 6, HGActionOverrideStartupIndex = 7, HGActionOverrideResolution = 8 };
+enum { HGActionReturnFalse = 1, HGActionReturnTrue = 2, HGActionSkipVoid = 3, HGActionShowCloseButton = 4, HGActionExitCleanMode = 5, HGActionEnterCleanMode = 6, HGActionOverrideStartupIndex = 7, HGActionOverrideResolution = 8, HGActionFilterGameItem = 9, HGActionReturnNil = 10, HGActionForceHide = 11 };
 
 #pragma mark - ABI-typed hook replacements
 
@@ -132,9 +132,26 @@ static BOOL HGBoolNoArg(id self, SEL _cmd) {
     return orig ? ((BOOL(*)(id,SEL))orig)(self,_cmd) : NO;
 }
 
+static NSString *HGDescriptionForModel(id item) {
+    if (!item || item == NSNull.null) return @"";
+    NSMutableArray *parts=[NSMutableArray arrayWithObject:NSStringFromClass([item class]) ?: @""];
+    NSString *desc=[item description]; if(desc.length)[parts addObject:desc];
+    for (NSString *prop in @[@"titleString",@"title",@"name",@"schema",@"jumpUrl",@"cellName",@"type",@"redDotId",@"cellType",@"identifier",@"itemId"]) {
+        SEL getter=NSSelectorFromString(prop); if(![item respondsToSelector:getter]) continue;
+        @try { id value=((id(*)(id,SEL))objc_msgSend)(item,getter); if(value && value!=NSNull.null)[parts addObject:[value description]]; } @catch (__unused NSException *e) {}
+    }
+    return [[parts componentsJoinedByString:@" "] lowercaseString];
+}
+
+static BOOL HGIsGameSidebarItem(id item) {
+    NSString *text=HGDescriptionForModel(item);
+    return [text containsString:@"game_center"] || [text containsString:@"gamecenter"] || [text containsString:@"游戏中心"] || [text containsString:@"小游戏"] || [text containsString:@"游戏"];
+}
+
 static BOOL HGBoolObjectArg(id self, SEL _cmd, id arg) {
     IMP orig = HGOriginalFor(self, _cmd); NSInteger f = HGFeatureFor(self, _cmd); NSInteger a = HGActionFor(self, _cmd);
     if (f >= 0 && HGEnabled(f)) { if (a == HGActionReturnFalse) return NO; if (a == HGActionReturnTrue) return YES; }
+    if (f == 42 && a == HGActionFilterGameItem && HGEnabled(42) && HGIsGameSidebarItem(arg)) return NO;
     return orig ? ((BOOL(*)(id,SEL,id))orig)(self,_cmd,arg) : NO;
 }
 
@@ -142,6 +159,12 @@ static BOOL HGBoolBoolArg(id self, SEL _cmd, BOOL value) {
     IMP orig = HGOriginalFor(self, _cmd); NSInteger f = HGFeatureFor(self, _cmd); NSInteger a = HGActionFor(self, _cmd);
     if (f >= 0 && HGEnabled(f)) { if (a == HGActionReturnFalse) return NO; if (a == HGActionReturnTrue) return YES; }
     return orig ? ((BOOL(*)(id,SEL,BOOL))orig)(self,_cmd,value) : NO;
+}
+
+static BOOL HGBoolIntegerBoolArg(id self, SEL _cmd, NSInteger item, BOOL show) {
+    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd); NSInteger a=HGActionFor(self,_cmd);
+    if(f==41 && HGEnabled(41)) return NO;
+    return orig ? ((BOOL(*)(id,SEL,NSInteger,BOOL))orig)(self,_cmd,item,show) : NO;
 }
 
 static BOOL HGBoolObjectAndInteger(id self, SEL _cmd, id obj, NSInteger value) {
@@ -179,6 +202,10 @@ static void HGVoidNoArg(id self, SEL _cmd) {
 static void HGVoidObjectArg(id self, SEL _cmd, id arg) {
     IMP orig = HGOriginalFor(self, _cmd); NSInteger f = HGFeatureFor(self, _cmd); NSInteger a = HGActionFor(self, _cmd);
     if (f >= 0 && HGEnabled(f) && a == HGActionSkipVoid) return;
+    if (f == 42 && a == HGActionFilterGameItem && HGEnabled(42) && [arg isKindOfClass:NSArray.class]) {
+        NSMutableArray *filtered=[NSMutableArray array]; for(id item in (NSArray *)arg) if(!HGIsGameSidebarItem(item))[filtered addObject:item];
+        if(orig)((void(*)(id,SEL,id))orig)(self,_cmd,filtered); return;
+    }
     if (orig) ((void(*)(id,SEL,id))orig)(self,_cmd,arg);
 }
 
@@ -188,13 +215,68 @@ static id HGObjectObjectArg(id self, SEL _cmd, id arg) {
     if (f == 42 && HGEnabled(42) && [result isKindOfClass:NSArray.class]) {
         NSMutableArray *filtered = [NSMutableArray array];
         for (id item in (NSArray *)result) {
-            NSString *text = [[item description] lowercaseString];
-            if ([text containsString:@"game"] || [text containsString:@"小游戏"] || [text containsString:@"游戏中心"]) continue;
+            if (HGIsGameSidebarItem(item)) continue;
             [filtered addObject:item];
         }
         return filtered;
     }
     return result;
+}
+
+static id HGObjectNoArg(id self, SEL _cmd) {
+    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd); NSInteger a=HGActionFor(self,_cmd);
+    id result=orig ? ((id(*)(id,SEL))orig)(self,_cmd) : nil;
+    if (f>=0 && HGEnabled(f) && a==HGActionReturnNil) return nil;
+    if (f==40 && HGEnabled(40)) return nil;
+    if (f==-4 && a==12 && [result isKindOfClass:NSArray.class]) {
+        NSMutableArray *filtered=[NSMutableArray array];
+        for(id item in (NSArray *)result) {
+            NSString *t=HGDescriptionForModel(item); BOOL hide=NO;
+            if(HGEnabled(31) && ([t containsString:@"hotcomment"] || [t containsString:@"热评"] || [t containsString:@"rcmdreason"])) hide=YES;
+            if(HGEnabled(32) && ([t containsString:@"tagview"] || [t containsString:@"标签"] || [t containsString:@"taglist"])) hide=YES;
+            if(HGEnabled(29) && ([t containsString:@"series"] || [t containsString:@"parallelworld"] || [t containsString:@"系列剧集"])) hide=YES;
+            if(HGEnabled(34) && ([t containsString:@"aiusage"] || [t containsString:@"ailogo"] || [t containsString:@"备案号"])) hide=YES;
+            if(!hide)[filtered addObject:item];
+        }
+        return filtered;
+    }
+    return result;
+}
+
+static double HGDoubleBoolArg(id self, SEL _cmd, BOOL value) {
+    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd);
+    if(f==32 && HGEnabled(32)) return 0.0;
+    return orig ? ((double(*)(id,SEL,BOOL))orig)(self,_cmd,value) : 0.0;
+}
+
+static NSInteger HGIntegerObjectArg(id self, SEL _cmd, id model) {
+    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd);
+    if(f==37 && HGEnabled(37)) return 0;
+    return orig ? ((NSInteger(*)(id,SEL,id))orig)(self,_cmd,model) : 0;
+}
+
+static void HGVoidIntegerBoolArg(id self, SEL _cmd, NSInteger item, BOOL show) {
+    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd);
+    if(f==41 && HGEnabled(41)) show=NO;
+    if(orig)((void(*)(id,SEL,NSInteger,BOOL))orig)(self,_cmd,item,show);
+}
+
+static void HGVoidBoolIntegerArg(id self, SEL _cmd, BOOL show, NSInteger item) {
+    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd);
+    if(f==41 && HGEnabled(41)) show=NO;
+    if(orig)((void(*)(id,SEL,BOOL,NSInteger))orig)(self,_cmd,show,item);
+}
+
+static void HGVoidObjectBoolArg(id self, SEL _cmd, id item, BOOL forceHide) {
+    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd); NSInteger a=HGActionFor(self,_cmd);
+    if(f==41 && HGEnabled(41) && a==HGActionForceHide) forceHide=YES;
+    if(orig)((void(*)(id,SEL,id,BOOL))orig)(self,_cmd,item,forceHide);
+}
+
+static void HGVoidDoubleBoolArg(id self, SEL _cmd, double time, BOOL refresh) {
+    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd); NSInteger a=HGActionFor(self,_cmd);
+    if(f==29 && HGEnabled(29) && a==HGActionSkipVoid) return;
+    if(orig)((void(*)(id,SEL,double,BOOL))orig)(self,_cmd,time,refresh);
 }
 
 static float HGFloatNoArg(id self, SEL _cmd) {
@@ -289,7 +371,7 @@ static void HGVoidDoubleDouble(id self, SEL _cmd, double current, double duratio
 }
 
 static NSInteger HGIntegerNoArg(id self, SEL _cmd) {
-    IMP orig = HGOriginalFor(self, _cmd); NSInteger f = HGFeatureFor(self, _cmd);
+    IMP orig = HGOriginalFor(self, _cmd);
     return orig ? ((NSInteger(*)(id,SEL))orig)(self,_cmd) : 0;
 }
 
@@ -324,6 +406,14 @@ static void HGInstallTypedHook(NSString *className, NSString *selectorName, NSIn
         case 12: abiOK = argc == 3 && rt[0]=='d' && arg2Object; replacement = (IMP)HGDoubleObjectArg; break;
         case 13: abiOK = argc == 3 && rt[0]=='v' && (a2[0]=='q' || a2[0]=='i' || a2[0]=='Q' || a2[0]=='I'); replacement = (IMP)HGVoidIntegerArg; break;
         case 14: abiOK = argc == 3 && rt[0]=='v' && arg2Bool; replacement = (IMP)HGVoidBoolArg; break;
+        case 15: abiOK = argc == 3 && rt[0]=='d' && arg2Bool; replacement = (IMP)HGDoubleBoolArg; break;
+        case 16: abiOK = argc == 2 && rt[0]=='@'; replacement = (IMP)HGObjectNoArg; break;
+        case 17: abiOK = argc == 3 && (rt[0]=='q' || rt[0]=='i' || rt[0]=='Q' || rt[0]=='I') && arg2Object; replacement = (IMP)HGIntegerObjectArg; break;
+        case 18: abiOK = argc == 4 && rt[0]=='v' && arg3Integer==NO && (a2[0]=='q'||a2[0]=='i'||a2[0]=='Q'||a2[0]=='I') && (a3[0]=='B'||a3[0]=='c'); replacement = (IMP)HGVoidIntegerBoolArg; break;
+        case 19: abiOK = argc == 4 && rt[0]=='v' && arg2Bool && (a3[0]=='i'||a3[0]=='q'||a3[0]=='I'||a3[0]=='Q'); replacement = (IMP)HGVoidBoolIntegerArg; break;
+        case 20: abiOK = argc == 4 && (rt[0]=='B'||rt[0]=='c') && (a2[0]=='i'||a2[0]=='q'||a2[0]=='I'||a2[0]=='Q') && (a3[0]=='B'||a3[0]=='c'); replacement = (IMP)HGBoolIntegerBoolArg; break;
+        case 21: abiOK = argc == 4 && rt[0]=='v' && a2[0]=='d' && (a3[0]=='B'||a3[0]=='c'); replacement = (IMP)HGVoidDoubleBoolArg; break;
+        case 22: abiOK = argc == 4 && rt[0]=='v' && arg2Object && arg3Integer==NO && (a3[0]=='B'||a3[0]=='c'); replacement = (IMP)HGVoidObjectBoolArg; break;
     }
     if (!abiOK) { NSLog(@"[HongGuoPurify] ABI skipped %@ %@ ret=%s args=%u", className, selectorName, rt, argc); return; }
     NSString *key = HGKey(cls, sel); if ([gHGInstalled containsObject:key]) return;
@@ -541,6 +631,8 @@ static void HGInstallFeatureHooks(void) {
     HGInstallTypedHook(@"SSAdShortVideoSideBarPatchAdConfig", @"enable_side_bar_patch_ad", 26, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSShortVideoCommentAdService", @"enableVideoAlbumAd", 26, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSShortVideoCommentAdService", @"enableShortVideoCommentAd:", 26, HGActionReturnFalse, 10, NO);
+    HGInstallTypedHook(@"SSShortVideoAboveLeftContainerViewManager", @"configureDanmakuViewWithModel:", 27, HGActionSkipVoid, 5, NO);
+    HGInstallTypedHook(@"SSShortVideoAiUsageView", @"configureSeriesAIEntranceViewWithModel:", 34, HGActionSkipVoid, 5, NO);
 
     // Reward and coin pendant controls (feature 4), plus use the native ad close path (feature 15).
     HGInstallTypedHook(@"SSWelfareListenPendantManager", @"canShowPendantInVC:", 4, HGActionReturnFalse, 2, NO);
@@ -582,25 +674,55 @@ static void HGInstallFeatureHooks(void) {
     HGInstallTypedHook(@"SSShortVideoBaseLeftContainerView", @"canShowTagView", 32, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"FQVShortVideoBaseLeftContainerView", @"showSecondaryInfoTagList", 32, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"FQVShortVideoBaseLeftContainerView", @"showTagList", 32, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"FQVShortVideoBaseLeftContainerView", @"hasVisibleSecondaryInfoLine", 32, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"FQVShortVideoBaseLeftContainerView", @"videoTagListViewHiddenWithHorizontalScrollEnabled:", 32, HGActionReturnTrue, 10, NO);
+    HGInstallTypedHook(@"FQVShortVideoBaseLeftContainerView", @"titleScrollViewTopOffsetTags:", 32, 0, 15, NO);
+    HGInstallTypedHook(@"SSShortVideoOutterMultiGenreFeedLeftContainerView", @"refreshTagsViewIfNeedWithVideoTagList", 32, HGActionSkipVoid, 5, NO);
+    HGInstallTypedHook(@"SSShortVideoOutterMultiGenreFeedLeftContainerViewModel", @"hotComment", 31, HGActionReturnNil, 16, NO);
+    HGInstallTypedHook(@"SSShortVideoRcmdReasonViewManager", @"orderedAboveLeftViewsForCurrentState", -4, 12, 16, NO);
+    HGInstallTypedHook(@"SSShortVideoRcmdReasonViewManager", @"candidateLayoutItemsForCurrentState", -4, 12, 16, NO);
+    HGInstallTypedHook(@"FQVShortVideoPlayerMaskDecorationDelegate", @"recordNumberLabel", 40, HGActionReturnNil, 16, NO);
+    HGInstallTypedHook(@"SSShortVideoOutterSeriesLeftContainerView", @"updateVisibilityAtPlaybackTime:refreshLayout:", 29, HGActionSkipVoid, 21, NO);
+    HGInstallTypedHook(@"SSShortVideoInnerSeriesLeftContainerView", @"updateVisibilityAtPlaybackTime:refreshLayout:", 29, HGActionSkipVoid, 21, NO);
+    HGInstallTypedHook(@"SSShortVideoPostVideoLeftContainerView", @"updateVisibilityAtPlaybackTime:refreshLayout:", 29, HGActionSkipVoid, 21, NO);
+    HGInstallTypedHook(@"SSShortVideoSingleSeriesInfoLeftContainerView", @"updateVisibilityAtPlaybackTime:refreshLayout:", 29, HGActionSkipVoid, 21, NO);
+    HGInstallTypedHook(@"SSShortVideoBindSeriesLeftContainerView", @"updateVisibilityAtPlaybackTime:refreshLayout:", 29, HGActionSkipVoid, 21, NO);
+    HGInstallTypedHook(@"SSShortVideoDerivateLeftContainerView", @"updateVisibilityAtPlaybackTime:refreshLayout:", 29, HGActionSkipVoid, 21, NO);
 
     // Sidebar and red dots.
-    HGInstallTypedHook(@"SSMyUserSideBarViewController", @"shouldDisplaySidebarItem:", 42, HGActionReturnFalse, 2, NO);
+    HGInstallTypedHook(@"SSMyUserSideBarViewController", @"shouldDisplaySidebarItem:", 42, HGActionFilterGameItem, 2, NO);
     HGInstallTypedHook(@"SSMyUserSideBarViewController", @"filteredSidebarItemsWithItems:", 42, 0, 6, NO);
-    HGInstallTypedHook(@"SSBizeGameColdStartManager", @"tryShowMyTabGameRedDot", 41, HGActionSkipVoid, 4, NO);
-    HGInstallTypedHook(@"SSBizeGameColdStartManager", @"canShowRedDot", 41, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSBizGameColdStartManager", @"tryShowMyTabGameRedDot", 41, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSBizGameColdStartManager", @"canShowRedDot", 41, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSBookStoreCategorySignView", @"showRedDot", 41, HGActionSkipVoid, 4, NO);
     HGInstallTypedHook(@"SSBookStoreContinueTabRedDotModel", @"shouldShowRedDot", 41, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSUserCell2Model", @"isShowRedPoint", 41, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSMyUserJGZoneFollowUpdateDataModel", @"shouldShowRedDot", 41, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSRedDot", @"shouldShow", 41, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSRedDot", @"checkCanShowRecursively", 41, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSRedDot", @"canShow", 41, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSUserProfileGoldenLineItemInfoData", @"needShowRedDot", 41, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSFreeGuideAbData", @"hasReddot", 41, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSMinePageKMPDepend", @"updateSidebarItemRedDotForCellType:show:", 41, 0, 18, NO);
+    HGInstallTypedHook(@"SSTabBarController", @"configRedDotShow:item:", 41, 0, 19, NO);
+    HGInstallTypedHook(@"SSMyUserBar", @"shouldShowRedDotItem:isShow:", 41, 0, 20, NO);
+    HGInstallTypedHook(@"SSMyUserBar", @"configRedDot:", 41, HGActionSkipVoid, 5, NO);
+    HGInstallTypedHook(@"SSMyUserBar", @"configSideBarButtonRedDot:forceHide:", 41, HGActionForceHide, 22, NO);
+    HGInstallTypedHook(@"RKMPIOSMinePageControllerHandle", @"updateSidebarItemRedDotCellType:show:", 41, 0, 18, NO);
 
     // Mine-page cards and shortcut group.
     HGInstallTypedHook(@"SSVipSettingServiceImpl", @"mineIsVipCardShow", 16, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSMyUser621BaseViewController", @"showShortcut", 35, HGActionSkipVoid, 4, NO);
     HGInstallTypedHook(@"SSMyUser621BaseViewController", @"setupShortcutData", 35, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSMyUser330CollectionViewController", @"updateCell3View", 18, HGActionSkipVoid, 4, NO);
+    HGInstallTypedHook(@"SSMyUserCell3Model", @"canShowAiLogo", 34, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSMyUserShopAndMiniGameEntranceCellModel", @"canShow", 2, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"SSVipSettingService", @"mineIsVipCardShow", 16, HGActionReturnFalse, 1, NO);
 
     // Download entry point: expose the app's native control where the target version supports it.
     HGInstallTypedHook(@"FQVShortVideoListDownloadConfig", @"enableDownloadItem", 37, HGActionReturnTrue, 1, NO);
     HGInstallTypedHook(@"SSShortVideoDownloadVideoManager", @"checkCanShowDownloadWithVideoDataModel:", 37, HGActionReturnTrue, 2, NO);
+    HGInstallTypedHook(@"SSShortVideoDownloadVideoManager", @"downloadItemRemovalReasonWithVideoDataModel:", 37, 0, 17, NO);
 
     // Playback controls. Return type is checked before any hook is installed.
     HGInstallTypedHook(@"FQVShortVideoListPlayConfig", @"defaultFastPlayRate", 43, 0, 7, NO);
