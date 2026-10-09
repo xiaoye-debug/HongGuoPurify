@@ -23,6 +23,15 @@ jobs:
           cat Tweak.xm.gz.b64.00 Tweak.xm.gz.b64.01 Tweak.xm.gz.b64.02 Tweak.xm.gz.b64.03 Tweak.xm.gz.b64.04 | base64 -d > /tmp/hg-source.gz
           gzip -t /tmp/hg-source.gz
           gzip -dc /tmp/hg-source.gz > Tweak.xm
+          python3 - <<'PY'
+          p = "Tweak.xm"
+          s = open(p, encoding="utf-8").read()
+          s = s.replace(
+              "IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd); NSInteger a=HGActionFor(self,_cmd);\\n    if(f==41 && HGEnabled(41)) return NO;",
+              "IMP orig=HGOriginalFor(self,_cmd);\\n    if(HGEnabled(41)) return NO;"
+          )
+          open(p, "w", encoding="utf-8").write(s)
+          PY
           test -s Tweak.xm
           grep -q 'HGInstallFeatureHooks' Tweak.xm
           git config user.name "github-actions[bot]"
