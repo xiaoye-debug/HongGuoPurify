@@ -44,6 +44,7 @@ static BOOL HGHookedBoolGetter(id self, SEL _cmd) {
         [selectorName isEqualToString:@"shouldRequestShortVideoAd"] ||
         [selectorName isEqualToString:@"shouldRequestPauseAd"] ||
         [selectorName isEqualToString:@"shouldRequestPatchAd"] ||
+        [selectorName isEqualToString:@"pauseAdRequestEnable"] ||
         [selectorName isEqualToString:@"enable_recommend_flow_ad"] ||
         [selectorName isEqualToString:@"enable_plot_touch_ad"] ||
         [selectorName isEqualToString:@"enable_side_bar_patch_ad"] ||
@@ -131,12 +132,15 @@ static void HGInstallHooks(void) {
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestShortVideoAd");
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestPauseAd");
         HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"shouldRequestPatchAd");
+        HGInstallBoolHook(@"BDADShortVideoCommonAdManager", @"pauseAdRequestEnable");
         HGInstallBoolHook(@"SSAdShortVideoHomePageFeedAdConfig", @"enable_recommend_flow_ad");
         HGInstallBoolHook(@"SSAdShortVideoPlotTouchAdConfig", @"enable_plot_touch_ad");
         HGInstallBoolHook(@"SSAdShortVideoSideBarPatchAdConfig", @"enable_side_bar_patch_ad");
         HGInstallBoolHook(@"SSShortVideoCommentAdService", @"enableVideoAlbumAd");
         HGInstallBoolHook(@"SSShortVideoRcmdReasonViewManager", @"shouldDisplayRcmdReasonView");
         HGInstallBoolHook(@"FQVShortVideoBaseLeftContainerView", @"shouldShowVideoTagInfoInTagList");
+        HGInstallBoolHook(@"SSShortVideoOutterMultiGenreFeedLeftContainerViewModel", @"shouldAddAiUsageView");
+        HGInstallBoolHook(@"SSShortVideoOutterMultiGenreFeedLeftContainerViewModel", @"shouldAddParallelWorldEntryView");
 
         NSLog(@"[HongGuoPurify] hook pass complete; installed=%lu",
               (unsigned long)gInstalledHooks.count);
