@@ -719,6 +719,8 @@ static void HGInstallFeatureHooks(void) {
     HGInstallTypedHook(@"BDARewardedVideoAdController", @"closeBtnClick:", 15, 0, 5, NO);
 
     // Entering the short-drama page should not start playback without user input (feature 21).
+    HGInstallTypedHook(@"FQVShortVideoListConfig", @"initialEnginePlayInterrupt", 21, HGActionReturnFalse, 1, NO);
+    HGInstallTypedHook(@"FQVShortVideoListVCLifecyclePlayComponent", @"continuePlaybackForViewAppearance", 21, HGActionSkipVoid, 4, NO);
     HGInstallTypedHook(@"SSShortVideoFeedColdPlayManager", @"canShowVideoFeedColdPlayVC", 21, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSShortVideoFeedColdPlayManager", @"prepareVideoFeedColdPlayerIfNeeded", 21, HGActionSkipVoid, 4, NO);
     HGInstallTypedHook(@"SSShortVideoFeedColdPlayManager", @"showVideoFeedColdPlayVCWithContainerVC:", 21, HGActionSkipVoid, 5, NO);
