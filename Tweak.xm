@@ -509,7 +509,7 @@ static BOOL HGViewMatchesFeature(UIView *v, NSInteger f, NSString *s, NSString *
         case 0: return adLike && readerContext;
         case 1: return adLike && audioContext;
         case 26: return adLike && dramaContext;
-        case 2: return HGContainsAny(context,@[@"小游戏",@"游戏中心",@"商城",@"直播入口"]);
+        case 2: return HGContainsAny(context,@[@"小游戏",@"商城",@"直播入口"]) && !HGContainsAny(context,@[@"sidebar",@"侧边栏"]);
         case 3: return HGContainsAny(context,@[@"评分",@"评价",@"rateus",@"reviewinvite"]);
         case 6: return HGContainsAny(context,@[@"通知权限",@"开启通知",@"开启推送",@"notificationpermission"]);
         case 7: return HGContainsAny(context,@[@"小组件",@"添加到桌面",@"widgetguide"]);
@@ -541,7 +541,7 @@ static BOOL HGViewMatchesFeature(UIView *v, NSInteger f, NSString *s, NSString *
         case 35: return HGContainsAny(context,@[@"快捷入口",@"shortcutgroup",@"minequick"]);
         case 40: return HGContainsAny(context,@[@"榜单排名",@"ranknumber",@"ranking"]);
         case 41: return HGContainsAny(context,@[@"reddot",@"redpoint",@"红点",@"红点提醒"]);
-        case 42: return HGContainsAny(context,@[@"游戏中心",@"gamecenter",@"小游戏"]);
+        case 42: return HGContainsAny(context,@[@"游戏中心",@"gamecenter"]) && HGContainsAny(context,@[@"sidebar",@"侧边栏",@"myuser"]);
         default: return NO;
     }
 }
