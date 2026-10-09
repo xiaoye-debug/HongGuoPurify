@@ -946,6 +946,15 @@ static void HGInstallUIHooks(void) {
 
 static void HGInstallAllHooksPass(void) {
     gHGHookPassCount++;
+    BOOL targetClassesPresent = NSClassFromString(@"FQVShortVideoListConfig") ||
+                                NSClassFromString(@"SSSettingViewController") ||
+                                NSClassFromString(@"SSShortVideoFeedColdPlayManager");
+    if (!targetClassesPresent) {
+        if (gHGHookPassCount < 5) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ HGInstallAllHooksPass(); });
+        }
+        return;
+    }
     HGInstallFeatureHooks();
     HGInstallResolutionHook();
     HGInstallUIHooks();
@@ -962,11 +971,10 @@ static void HGPreferencesDidChange(CFNotificationCenterRef center, void *observe
 %ctor {
     @autoreleasepool {
         NSString *bundleID = NSBundle.mainBundle.bundleIdentifier ?: @"";
-        NSSet<NSString *> *supportedBundleIDs = [NSSet setWithArray:@[@"com.phoenix.video", @"com.phoenix.video.1", @"com.phoenix.video😡"]];
-        if (![supportedBundleIDs containsObject:bundleID]) return;
+        // No bundle-ID allowlist: load into any IPA, but only install hooks in processes with target classes.
         HGLoadPreferences();
         gHGOriginalIMPs=[NSMutableDictionary dictionary]; gHGHookFeatures=[NSMutableDictionary dictionary]; gHGHookActions=[NSMutableDictionary dictionary]; gHGInstalled=[NSMutableSet set];
-        NSLog(@"[HongGuoPurify] loaded for %@", bundleID);
+        NSLog(@"[HongGuoPurify] injected into %@", bundleID);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(2.5*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ HGInstallAllHooksPass(); });
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), &gHGSettingsButtonAdded, HGPreferencesDidChange, (__bridge CFStringRef)kHGPreferencesChanged, NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
     }
