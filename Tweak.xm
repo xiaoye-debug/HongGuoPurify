@@ -125,7 +125,7 @@ static NSInteger HGActionFor(id self, SEL sel) {
     return 0;
 }
 
-enum { HGActionReturnFalse = 1, HGActionReturnTrue = 2, HGActionSkipVoid = 3, HGActionShowCloseButton = 4, HGActionExitCleanMode = 5, HGActionEnterCleanMode = 6, HGActionOverrideStartupIndex = 7, HGActionOverrideResolution = 8, HGActionFilterGameItem = 9, HGActionReturnNil = 10, HGActionForceHide = 11 };
+enum { HGActionReturnFalse = 1, HGActionReturnTrue = 2, HGActionSkipVoid = 3, HGActionShowCloseButton = 4, HGActionExitCleanMode = 5, HGActionEnterCleanMode = 6, HGActionOverrideStartupIndex = 7, HGActionOverrideResolution = 8, HGActionFilterGameItem = 9, HGActionReturnNil = 10, HGActionForceHide = 11, HGActionFilterLeftDecorations = 12, HGActionShowDuration = 13 };
 
 #pragma mark - ABI-typed hook replacements
 
@@ -250,7 +250,7 @@ static id HGObjectNoArg(id self, SEL _cmd) {
     id result=orig ? ((id(*)(id,SEL))orig)(self,_cmd) : nil;
     if (f>=0 && HGEnabled(f) && a==HGActionReturnNil) return nil;
     if (f==40 && HGEnabled(40)) return nil;
-    if (f==-4 && a==12 && [result isKindOfClass:NSArray.class]) {
+    if (f==-4 && a==HGActionFilterLeftDecorations && [result isKindOfClass:NSArray.class]) {
         NSMutableArray *filtered=[NSMutableArray array];
         for(id item in (NSArray *)result) {
             NSString *t=HGDescriptionForModel(item); BOOL hide=NO;
@@ -386,6 +386,30 @@ static void HGVoidIntegerArg(id self, SEL _cmd, NSInteger value) {
     }
 }
 
+static double HGReadTimeValue(id object, NSArray<NSString *> *selectors) {
+    for (NSString *name in selectors) {
+        SEL sel=NSSelectorFromString(name);
+        Method method=class_getInstanceMethod(object_getClass(object),sel);
+        if(!method) continue;
+        char type[16]={0}; method_getReturnType(method,type,sizeof(type));
+        if(type[0]=='d') return ((double(*)(id,SEL))objc_msgSend)(object,sel);
+        if(type[0]=='f') return ((float(*)(id,SEL))objc_msgSend)(object,sel);
+        if(type[0]=='q'||type[0]=='Q'||type[0]=='i'||type[0]=='I'||type[0]=='l'||type[0]=='L') return (double)((NSInteger(*)(id,SEL))objc_msgSend)(object,sel);
+        if(type[0]=='@') { id value=((id(*)(id,SEL))objc_msgSend)(object,sel); if([value respondsToSelector:@selector(doubleValue)]) return [value doubleValue]; }
+    }
+    return NAN;
+}
+
+static void HGVoidDurationLifecycle(id self, SEL _cmd) {
+    IMP orig=HGOriginalFor(self,_cmd);
+    if(orig)((void(*)(id,SEL))orig)(self,_cmd);
+    NSInteger f=HGFeatureFor(self,_cmd), a=HGActionFor(self,_cmd);
+    if(f!=36 || a!=HGActionShowDuration || !HGEnabled(36) || ![self isKindOfClass:UIView.class]) return;
+    double current=HGReadTimeValue(self,@[@"currentTime",@"currentPlaybackTime",@"sliderTime",@"progressTime"]);
+    double duration=HGReadTimeValue(self,@[@"duration",@"totalDuration",@"progressTotalTime",@"totalTime"]);
+    if(isfinite(current) && isfinite(duration) && duration>0) HGAttachDurationLabel((UIView *)self,current,duration);
+}
+
 static void HGVoidDoubleDouble(id self, SEL _cmd, double current, double duration) {
     IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd);
     if (orig) ((void(*)(id,SEL,double,double))orig)(self,_cmd,current,duration);
@@ -440,6 +464,7 @@ static void HGInstallTypedHook(NSString *className, NSString *selectorName, NSIn
         case 20: abiOK = argc == 4 && (rt[0]=='B'||rt[0]=='c') && (a2[0]=='i'||a2[0]=='q'||a2[0]=='I'||a2[0]=='Q') && (a3[0]=='B'||a3[0]=='c'); replacement = (IMP)HGBoolIntegerBoolArg; break;
         case 21: abiOK = argc == 4 && rt[0]=='v' && a2[0]=='d' && (a3[0]=='B'||a3[0]=='c'); replacement = (IMP)HGVoidDoubleBoolArg; break;
         case 22: abiOK = argc == 4 && rt[0]=='v' && arg2Object && arg3Integer==NO && (a3[0]=='B'||a3[0]=='c'); replacement = (IMP)HGVoidObjectBoolArg; break;
+        case 24: abiOK = argc == 2 && rt[0]=='v'; replacement = (IMP)HGVoidDurationLifecycle; break;
     }
     if (!abiOK) { NSLog(@"[HongGuoPurify] ABI skipped %@ %@ ret=%s args=%u", className, selectorName, rt, argc); return; }
     NSString *key = HGKey(cls, sel); if ([gHGInstalled containsObject:key]) return;
@@ -783,6 +808,10 @@ static void HGInstallFeatureHooks(void) {
     HGInstallTypedHook(@"FQVShortVideoListVCPlayerComponent", @"playRateWithModel:", 43, 0, 12, NO);
     HGInstallTypedHook(@"FQVShortVideoProgressView", @"updateSliderTime:duration:", 36, 0, 11, NO);
     HGInstallTypedHook(@"FQVShortVideoLandscapeProgressView", @"updateProgressBarWithSliderTime:progressTotalTime:", 36, 0, 11, NO);
+    HGInstallTypedHook(@"FQVShortVideoProgressView", @"layoutSubviews", 36, HGActionShowDuration, 24, NO);
+    HGInstallTypedHook(@"FQVShortVideoProgressView", @"didMoveToSuperview", 36, HGActionShowDuration, 24, NO);
+    HGInstallTypedHook(@"FQVShortVideoLandscapeProgressView", @"layoutSubviews", 36, HGActionShowDuration, 24, NO);
+    HGInstallTypedHook(@"FQVShortVideoLandscapeProgressView", @"didMoveToSuperview", 36, HGActionShowDuration, 24, NO);
     HGInstallTypedHook(@"FQVShortVideoListControlConfig", @"enableCleanScreen", 44, HGActionReturnTrue, 1, NO);
     HGInstallTypedHook(@"FQVShortVideoListVCPlayComponent", @"play", 44, HGActionEnterCleanMode, 4, NO);
     HGInstallTypedHook(@"FQVShortVideoListVCPlayerComponent", @"pause", 45, HGActionExitCleanMode, 4, NO);
