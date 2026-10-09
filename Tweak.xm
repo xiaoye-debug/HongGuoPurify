@@ -499,9 +499,7 @@ static BOOL HGContainsAny(NSString *text, NSArray<NSString *> *terms) {
     return NO;
 }
 
-static BOOL HGViewMatchesFeature(UIView *v, NSInteger f) {
-    NSString *s=HGTextForView(v);
-    NSString *context=HGContextTextForView(v);
+static BOOL HGViewMatchesFeature(UIView *v, NSInteger f, NSString *s, NSString *context) {
     BOOL adLike=HGContainsAny(context,@[@"adview",@"advert",@"adcontainer",@"ssad",@"bdad",@"广告",@"推广"]);
     BOOL readerContext=HGContainsAny(context,@[@"reader",@"readpage",@"readingpage",@"bookread",@"chapterreader",@"阅读页",@"阅读广告",@"章节阅读"]);
     BOOL audioContext=HGContainsAny(context,@[@"listen",@"audio",@"voiceplayer",@"audioplayer",@"readaloud",@"听书",@"听读",@"音频"]);
@@ -551,10 +549,12 @@ static BOOL HGViewMatchesFeature(UIView *v, NSInteger f) {
 static char kHGOriginalHiddenKey;
 static void HGApplyViewCleanup(UIView *view) {
     if (!view) return;
+    NSString *viewText=HGTextForView(view);
+    NSString *contextText=HGContextTextForView(view);
     for (NSInteger f=0; f<HGFeatureTitles().count; f++) {
         if (f==8 || f==38 || f==39 || f==36 || f==37 || f==43 || f==44 || f==45) continue;
         BOOL featureOn=HGEnabled(f); if (f==33 && [gHGPrefs[@"startupTop"] boolValue] && [gHGPrefs[@"enabled"] boolValue]) featureOn=YES;
-        if (featureOn && HGViewMatchesFeature(view,f)) {
+        if (featureOn && HGViewMatchesFeature(view,f,viewText,contextText)) {
             if (!objc_getAssociatedObject(view,&kHGOriginalHiddenKey)) objc_setAssociatedObject(view,&kHGOriginalHiddenKey,@(view.hidden),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
             view.hidden = YES;
             break;
