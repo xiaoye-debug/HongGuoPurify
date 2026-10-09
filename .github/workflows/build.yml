@@ -29,6 +29,10 @@ jobs:
           export THEOS="$HOME/theos"
           make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless -j"$(sysctl -n hw.ncpu)"
 
+      - name: Verify preference bundle and package contents
+        run: |
+          dpkg-deb -c packages/*.deb | grep -E 'PreferenceBundles/HongGuoPurifyPrefs.bundle|PreferenceLoader/Preferences/HongGuoPurifyPrefs.plist|HongGuoPurify.dylib'
+
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
         with:
