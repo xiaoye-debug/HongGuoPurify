@@ -762,7 +762,6 @@ static void HGInstallFeatureHooks(void) {
     HGInstallTypedHook(@"SSVideoSeriesFeedViewController", @"resumeVideoPlayIfNeeded", 21, HGActionSkipVoid, 4, NO);
 
     // Ad/recommendation decorations and tag cleanup.
-    HGInstallTypedHook(@"SSShortVideoRcmdReasonViewManager", @"shouldDisplayRcmdReasonView", 31, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSShortVideoBelowLeftContainerViewManager", @"shouldAddAiUsageView", 34, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSShortVideoOutterMultiGenreFeedLeftContainerViewModel", @"shouldShowVideoTagInfoInTagList", 32, HGActionReturnFalse, 1, NO);
     HGInstallTypedHook(@"SSShortVideoParallelWorldEntryViewModel", @"shouldAddParallelWorldEntryView", 29, HGActionReturnFalse, 1, NO);
