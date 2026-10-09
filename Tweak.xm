@@ -902,10 +902,21 @@ static void HGInstallResolutionHook(void) {
 }
 
 static void HGScanControllerForSettingsEntry(UIViewController *vc) {
-    if (!vc || !vc.isViewLoaded || !vc.view.window) return;
+    if (!vc) return;
     UIViewController *visible=vc;
-    while (visible.presentedViewController) visible=visible.presentedViewController;
-    if (visible.navigationController && visible.navigationController.visibleViewController) visible=visible.navigationController.visibleViewController;
+    for (NSUInteger depth=0; depth<12; depth++) {
+        if (visible.presentedViewController) { visible=visible.presentedViewController; continue; }
+        if ([visible isKindOfClass:UINavigationController.class]) {
+            UIViewController *next=((UINavigationController *)visible).visibleViewController;
+            if (next && next!=visible) { visible=next; continue; }
+        }
+        if ([visible isKindOfClass:UITabBarController.class]) {
+            UIViewController *next=((UITabBarController *)visible).selectedViewController;
+            if (next && next!=visible) { visible=next; continue; }
+        }
+        break;
+    }
+    if (!visible.isViewLoaded || !visible.view.window) return;
     if (!HGIsSettingsController(visible) || !visible.navigationController) return;
     Class targetClass=visible.class;
     SEL action=@selector(hgOpenHongGuoPurify);
