@@ -52,7 +52,6 @@ static NSMutableDictionary<NSString *, NSNumber *> *gHGHookActions;
 static NSMutableSet<NSString *> *gHGInstalled;
 static BOOL gHGSettingsButtonAdded;
 static BOOL gHGBaseUIHookInstalled;
-static BOOL gHGSettingsViewHookInstalled;
 static NSUInteger gHGHookPassCount;
 
 static NSDictionary *HGDefaultPreferences(void) {
@@ -685,7 +684,6 @@ static void HGPresentSettings(id host) {
 }
 
 static void HGOpenSettingsAction(id self, SEL _cmd);
-static IMP gOriginalSettingsDidAppear;
 static BOOL HGIsSettingsController(UIViewController *vc) {
     for (Class cls=vc.class; cls && cls!=UIViewController.class; cls=class_getSuperclass(cls)) {
         NSString *name=NSStringFromClass(cls);
@@ -696,24 +694,6 @@ static BOOL HGIsSettingsController(UIViewController *vc) {
     if ([title containsString:@"设置"] || [title.lowercaseString containsString:@"setting"]) return YES;
     return NO;
 }
-static void HGSettingsDidAppear(id self, SEL _cmd, BOOL animated) {
-    if (gOriginalSettingsDidAppear) ((void(*)(id,SEL,BOOL))gOriginalSettingsDidAppear)(self,_cmd,animated);
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (![self isKindOfClass:UIViewController.class]) return;
-        UIViewController *vc=(UIViewController *)self;
-        if (!HGIsSettingsController(vc) || !vc.navigationController) return;
-        Class targetClass=object_getClass(vc);
-        if (!class_getInstanceMethod(targetClass, @selector(hgOpenHongGuoPurify))) {
-            class_addMethod(targetClass, @selector(hgOpenHongGuoPurify), (IMP)HGOpenSettingsAction, "v@:");
-        }
-        UIBarButtonItem *item=[[UIBarButtonItem alloc] initWithTitle:@"红果净化" style:UIBarButtonItemStylePlain target:vc action:@selector(hgOpenHongGuoPurify)];
-        objc_setAssociatedObject(vc, @selector(hgOpenHongGuoPurify), item, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        NSMutableArray *items=[vc.navigationItem.rightBarButtonItems mutableCopy] ?: [NSMutableArray array];
-        BOOL exists=NO; for (UIBarButtonItem *it in items) if ([it.title isEqualToString:@"红果净化"]) exists=YES;
-        if (!exists) { [items insertObject:item atIndex:0]; vc.navigationItem.rightBarButtonItems=items; }
-    });
-}
-
 static void HGOpenSettingsAction(id self, SEL _cmd) { HGPresentSettings(self); }
 
 #pragma mark - Feature hook map
