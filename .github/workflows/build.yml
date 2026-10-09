@@ -20,7 +20,7 @@ jobs:
       - name: Expand reconstructed source
         run: |
           set -euo pipefail
-          cat Tweak.xm.gz.b64.00 Tweak.xm.gz.b64.01 Tweak.xm.gz.b64.02 Tweak.xm.gz.b64.03 Tweak.xm.gz.b64.04 | base64 -d > /tmp/hg-source.gz
+          cat Tweak.xm.gz.b64 Tweak.xm.gz.b64.part3 | base64 -d > /tmp/hg-source.gz
           gzip -t /tmp/hg-source.gz
           gzip -dc /tmp/hg-source.gz > Tweak.xm
           python3 - <<'PY'
