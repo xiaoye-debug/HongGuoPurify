@@ -173,6 +173,25 @@ static BOOL HGBoolObjectAndInteger(id self, SEL _cmd, id obj, NSInteger value) {
     return orig ? ((BOOL(*)(id,SEL,id,NSInteger))orig)(self,_cmd,obj,value) : NO;
 }
 
+static BOOL HGLooksLikeCloseButton(UIButton *button) {
+    if (!button) return NO;
+    NSMutableArray *parts=[NSMutableArray array];
+    if (NSStringFromClass([button class])) [parts addObject:NSStringFromClass([button class])];
+    if (button.currentTitle) [parts addObject:button.currentTitle];
+    if (button.accessibilityLabel) [parts addObject:button.accessibilityLabel];
+    if (button.accessibilityIdentifier) [parts addObject:button.accessibilityIdentifier];
+    UIView *parent=button.superview;
+    for (NSUInteger depth=0; parent && depth<4; depth++, parent=parent.superview) {
+        [parts addObject:NSStringFromClass([parent class]) ?: @""];
+        if (parent.accessibilityLabel) [parts addObject:parent.accessibilityLabel];
+    }
+    NSString *text=[[parts componentsJoinedByString:@" "] lowercaseString];
+    return [text containsString:@"close"] || [text containsString:@"skip"] ||
+           [text containsString:@"关闭"] || [text containsString:@"跳过"] ||
+           [text containsString:@"closebtn"] || [text containsString:@"skipbutton"] ||
+           [text containsString:@"×"] || [text containsString:@"✕"];
+}
+
 static void HGVoidNoArg(id self, SEL _cmd) {
     IMP orig = HGOriginalFor(self, _cmd); NSInteger f = HGFeatureFor(self, _cmd); NSInteger a = HGActionFor(self, _cmd);
     if (f >= 0 && HGEnabled(f) && a == HGActionSkipVoid) return;
@@ -183,7 +202,7 @@ static void HGVoidNoArg(id self, SEL _cmd) {
         if ([target isKindOfClass:UIView.class]) {
             NSMutableArray *stack=[NSMutableArray arrayWithObject:target];
             while (stack.count) { UIView *v=stack.lastObject; [stack removeLastObject];
-                if ([v isKindOfClass:UIButton.class]) { v.hidden=NO; ((UIButton *)v).enabled=YES; v.userInteractionEnabled=YES; }
+                if ([v isKindOfClass:UIButton.class] && HGLooksLikeCloseButton((UIButton *)v)) { v.hidden=NO; ((UIButton *)v).enabled=YES; v.userInteractionEnabled=YES; }
                 [stack addObjectsFromArray:v.subviews];
             }
         }
