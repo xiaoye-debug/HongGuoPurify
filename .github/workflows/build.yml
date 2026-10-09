@@ -24,12 +24,15 @@ jobs:
           gzip -t /tmp/hg-source.gz
           gzip -dc /tmp/hg-source.gz > Tweak.xm
           python3 - <<'PY'
+          import re
           p = "Tweak.xm"
           s = open(p, encoding="utf-8").read()
-          s = s.replace(
-              "IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd); NSInteger a=HGActionFor(self,_cmd);\\n    if(f==41 && HGEnabled(41)) return NO;",
-              "IMP orig=HGOriginalFor(self,_cmd);\\n    if(HGEnabled(41)) return NO;"
-          )
+          pattern = r"IMP orig=HGOriginalFor\(self,_cmd\);\s*NSInteger f=HGFeatureFor\(self,_cmd\);\s*NSInteger a=HGActionFor\(self,_cmd\);\s*if\(f==41 && HGEnabled\(41\)\) return NO;"
+          replacement = """IMP orig=HGOriginalFor(self,_cmd);
+              if(HGEnabled(41)) return NO;"""
+          s, n = re.subn(pattern, replacement, s, count=1)
+          if n != 1:
+              raise SystemExit("could not apply red-dot hook compile fix")
           open(p, "w", encoding="utf-8").write(s)
           PY
           test -s Tweak.xm
