@@ -3,7 +3,6 @@
         bundle = HongGuoPurifyPrefs;
         cell = PSLinkCell;
         detail = HGRootListController;
-        icon = HongGuoPurify;
         isController = 1;
         label = "红果净化";
     };
