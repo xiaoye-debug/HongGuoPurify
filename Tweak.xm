@@ -901,18 +901,53 @@ static void HGInstallResolutionHook(void) {
     HGInstallTypedHook(@"FQVPlayerEngineDataResolutionItem", @"setForceResolutionTypeNumber:", -2, HGActionOverrideResolution, 13, YES);
 }
 
-static void HGInstallUIHooks(void) {
-    // Hook UIViewController rather than relying on a single private class name;
-    // the host app changes its settings controller class across versions.
-    Class base=UIViewController.class;
-    SEL appear=@selector(viewDidAppear:);
-    if (!gHGSettingsViewHookInstalled && class_getInstanceMethod(base,appear)) {
-        IMP orig=NULL;
-        MSHookMessageEx(base,appear,(IMP)HGSettingsDidAppear,&orig);
-        gOriginalSettingsDidAppear=orig;
-        gHGSettingsViewHookInstalled=(orig!=NULL);
+static void HGScanControllerForSettingsEntry(UIViewController *vc) {
+    if (!vc || !vc.isViewLoaded || !vc.view.window) return;
+    UIViewController *visible=vc;
+    while (visible.presentedViewController) visible=visible.presentedViewController;
+    if (visible.navigationController && visible.navigationController.visibleViewController) visible=visible.navigationController.visibleViewController;
+    if (!HGIsSettingsController(visible) || !visible.navigationController) return;
+    Class targetClass=visible.class;
+    SEL action=@selector(hgOpenHongGuoPurify);
+    if (!class_getInstanceMethod(targetClass, action)) class_addMethod(targetClass, action, (IMP)HGOpenSettingsAction, "v@:");
+    UIBarButtonItem *item=objc_getAssociatedObject(visible, action);
+    if (!item) {
+        item=[[UIBarButtonItem alloc] initWithTitle:@"红果净化" style:UIBarButtonItemStylePlain target:visible action:action];
+        objc_setAssociatedObject(visible, action, item, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
-    SEL layout=@selector(viewDidLayoutSubviews);
+    NSArray *old=visible.navigationItem.rightBarButtonItems ?: @[];
+    BOOL exists=NO; for (UIBarButtonItem *it in old) if ([it.title isEqualToString:@"红果净化"]) { exists=YES; break; }
+    if (!exists) {
+        NSMutableArray *items=[old mutableCopy];
+        [items insertObject:item atIndex:0];
+        visible.navigationItem.rightBarButtonItems=items;
+    }
+}
+static void HGScanWindowsForSettingsEntry(void) {
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) continue;
+        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+            if (!window.isHidden && window.rootViewController) HGScanControllerForSettingsEntry(window.rootViewController);
+        }
+    }
+    for (UIWindow *window in UIApplication.sharedApplication.windows) {
+        if (!window.isHidden && window.rootViewController) HGScanControllerForSettingsEntry(window.rootViewController);
+    }
+}
+static void HGInstallUIHooks(void) {
+    // Some app settings controllers override viewDidAppear without calling super.
+    // A lightweight main-thread scan catches them without relying on private class names.
+    static BOOL scanStarted=NO;
+    if (!scanStarted) {
+        scanStarted=YES;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            HGScanWindowsForSettingsEntry();
+            [NSTimer scheduledTimerWithTimeInterval:1.0 repeats:YES block:^(NSTimer *timer) {
+                HGScanWindowsForSettingsEntry();
+            }];
+        });
+    }
+    Class base=UIViewController.class; SEL layout=@selector(viewDidLayoutSubviews);
     if (!gHGBaseUIHookInstalled && class_getInstanceMethod(base,layout)) {
         IMP orig=NULL; MSHookMessageEx(base,layout,(IMP)HGViewDidLayoutSubviews,&orig); gOriginalViewDidLayoutSubviews=orig; gHGBaseUIHookInstalled=(orig!=NULL);
     }
