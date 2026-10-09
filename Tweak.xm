@@ -162,8 +162,8 @@ static BOOL HGBoolBoolArg(id self, SEL _cmd, BOOL value) {
 }
 
 static BOOL HGBoolIntegerBoolArg(id self, SEL _cmd, NSInteger item, BOOL show) {
-    IMP orig=HGOriginalFor(self,_cmd); NSInteger f=HGFeatureFor(self,_cmd); NSInteger a=HGActionFor(self,_cmd);
-    if(f==41 && HGEnabled(41)) return NO;
+    IMP orig=HGOriginalFor(self,_cmd);
+    if (HGEnabled(41)) return NO;
     return orig ? ((BOOL(*)(id,SEL,NSInteger,BOOL))orig)(self,_cmd,item,show) : NO;
 }
 
