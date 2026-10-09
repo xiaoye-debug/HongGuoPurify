@@ -920,7 +920,8 @@ static void HGPreferencesDidChange(CFNotificationCenterRef center, void *observe
 %ctor {
     @autoreleasepool {
         NSString *bundleID = NSBundle.mainBundle.bundleIdentifier ?: @"";
-        if (![bundleID isEqualToString:@"com.phoenix.video"]) return;
+        NSSet<NSString *> *supportedBundleIDs = [NSSet setWithArray:@[@"com.phoenix.video", @"com.phoenix.video.1", @"com.phoenix.video😡"]];
+        if (![supportedBundleIDs containsObject:bundleID]) return;
         HGLoadPreferences();
         gHGOriginalIMPs=[NSMutableDictionary dictionary]; gHGHookFeatures=[NSMutableDictionary dictionary]; gHGHookActions=[NSMutableDictionary dictionary]; gHGInstalled=[NSMutableSet set];
         NSLog(@"[HongGuoPurify] loaded for %@", bundleID);
