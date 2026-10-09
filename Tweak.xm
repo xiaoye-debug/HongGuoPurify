@@ -684,6 +684,7 @@ static void HGPresentSettings(id host) {
     [top presentViewController:nav animated:YES completion:nil];
 }
 
+static void HGOpenSettingsAction(id self, SEL _cmd);
 static IMP gOriginalSettingsDidAppear;
 static BOOL HGIsSettingsController(UIViewController *vc) {
     for (Class cls=vc.class; cls && cls!=UIViewController.class; cls=class_getSuperclass(cls)) {
